@@ -20,8 +20,29 @@ public class GridController : MonoBehaviour
         if(Input.GetMouseButtonDown(0))
         {
             InitializeFlowField();
+
+            curFlowField.CreateCostField();
+
+            Vector3 mousePos = Input.mousePosition;
+            Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(mousePos);
+            Cell destinationCell = curFlowField.GetCellFromWorldPos(worldMousePos);
+            curFlowField.CreateIntegrationField(destinationCell);
+
+            curFlowField.CreateFlowField();
+
             GridDebug.SetCurFlowField(curFlowField);
-            Debug.Log("Mouse Clicked");
+            GridDebug.DrawFlowField();
+            //Debug.Log("Mouse Clicked at Screen Coordinates " + mousePos.x + " " + mousePos.y + " " + mousePos.z);
+            //Debug.Log("Mouse clicked at world coordinates " + worldMousePos.x + " " + worldMousePos.y + " " + worldMousePos.z);
+            //Debug.Log("Cell clicked is " + destinationCell.gridPosition.x + " " + destinationCell.gridPosition.y);
+        }
+
+        if (Input.GetMouseButtonDown(1))
+        {
+            curFlowField = null;
+            GridDebug.SetCurFlowField(null);
+            GridDebug.ClearChild();
+            //Debug.Log("Mouse Right Clicked");
         }
     }
 
