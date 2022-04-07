@@ -5,6 +5,10 @@ using UnityEngine;
 
 public class GridDirection
 {
+    /// <summary>
+    /// DESCRIPTION: Grid Direction determines the unit vector used in the creation of the flowfield
+    /// </summary>
+    
     public readonly Vector2Int Vector;
 
     private GridDirection (int x, int y)
