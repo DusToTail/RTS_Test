@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 public class SelectSystem : MonoBehaviour
 {
-    public List<GameObject> unitList { get; private set; }
+    public List<Unit> unitList { get; private set; }
 
     [SerializeField]
     private RectTransform selectFieldPosition;
@@ -25,7 +25,7 @@ public class SelectSystem : MonoBehaviour
 
     void Start()
     {
-        unitList = new List<GameObject>();
+        unitList = new List<Unit>();
         leftClickMousePosition_Click = Vector3.zero;
         leftClickMousePosition_Release = Vector3.zero;
         rightClickMousePosition_Click = Vector3.zero;
@@ -43,9 +43,11 @@ public class SelectSystem : MonoBehaviour
 
         if(Input.GetMouseButtonDown(0))
         {
-            unitList.Clear();
             Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             leftClickMousePosition_Click = new Vector3(worldMousePos.x, groundWorldPosition.position.y, worldMousePos.z);
+
+            unitList.Clear();
+
             Debug.Log("Left Clicked at " + leftClickMousePosition_Click);
         }
 
@@ -53,7 +55,9 @@ public class SelectSystem : MonoBehaviour
         {
             Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             leftClickMousePosition_Release = new Vector3(worldMousePos.x, groundWorldPosition.position.y, worldMousePos.z);
+
             AddUnitsToList();
+
             Debug.Log("Left Released at " + leftClickMousePosition_Release);
         }
 
@@ -61,6 +65,14 @@ public class SelectSystem : MonoBehaviour
         {
             Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             rightClickMousePosition_Click = new Vector3(worldMousePos.x, groundWorldPosition.position.y, worldMousePos.z);
+
+            Action moveAction = new Action(Action.ActionTypes.MoveTowards);
+            moveAction.InitializeMousePosition(rightClickMousePosition_Click);
+            FindObjectOfType<GridController>().AddNewFlowField(rightClickMousePosition_Click, ref moveAction);
+
+            EnqueueActionToUnits(moveAction);
+
+
             Debug.Log("Right Released at " + rightClickMousePosition_Click);
         }
 
@@ -68,6 +80,7 @@ public class SelectSystem : MonoBehaviour
         {
             Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             rightClickMousePosition_Release = new Vector3(worldMousePos.x, groundWorldPosition.position.y, worldMousePos.z);
+
             Debug.Log("Right Released at " + rightClickMousePosition_Release);
         }
     }
@@ -78,19 +91,24 @@ public class SelectSystem : MonoBehaviour
         Vector3 checkPosition = (leftClickMousePosition_Click + leftClickMousePosition_Release) / 2;
         int selectHitBoxSize = Mathf.FloorToInt(Vector3.Distance(leftClickMousePosition_Click, leftClickMousePosition_Release) / Mathf.Sqrt(2));
         Vector3 selectHitBox = Vector3.one * selectHitBoxSize + Vector3.up * 1000;
-        Debug.Log(checkPosition);
-        Debug.Log(selectHitBoxSize);
-        Debug.Log(selectHitBox);
-        Collider[] colliders = Physics.OverlapBox(checkPosition, selectHitBox, Quaternion.identity, LayerMask.NameToLayer(Tags.Selectable));
 
-        Debug.Log(colliders.Length);
+        Collider[] colliders = Physics.OverlapBox(checkPosition, selectHitBox, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
+
         foreach(Collider collider in colliders)
         {
             if (collider.gameObject.GetComponent<Unit>().entityType == EntityInterface.EntityTypes.SelectableUnit)
             {
-                unitList.Add(collider.gameObject);
-                Debug.Log("Added " + collider.gameObject.name);
+                unitList.Add(collider.gameObject.GetComponent<Unit>());
             }
+        }
+    }
+
+    private void EnqueueActionToUnits(Action _action)
+    {
+        if(unitList.Count == 0) { return; }
+        foreach(Unit curUnit in unitList)
+        {
+            curUnit.gameObject.GetComponent<ActionController>().EnqueueAction(_action);
         }
     }
 

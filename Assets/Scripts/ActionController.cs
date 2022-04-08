@@ -8,9 +8,6 @@ public class ActionController : MonoBehaviour
     public Queue<Action> actionQueue { get; private set; }
     private Action curAction;
 
-    private FlowField refFlowField;
-    private Vector3 curDirection;
-
     //Components
     private Rigidbody rb;
     private Unit unitInfo;
@@ -18,8 +15,11 @@ public class ActionController : MonoBehaviour
     private void Awake()
     {
         rb = gameObject.GetComponent<Rigidbody>();
+        unitInfo = gameObject.GetComponent<Unit>();
 
         actionQueue = new Queue<Action>();
+
+        curAction = null;
 
     }
     private void Start()
@@ -33,15 +33,18 @@ public class ActionController : MonoBehaviour
         CommitCurrentAction();
     }
 
-    public void CommitCurrentAction()
+    public void EnqueueAction(Action _action)
+    {
+        actionQueue.Enqueue(_action);
+    }
+
+    private void CommitCurrentAction()
     {
         if (curAction == null) { return; }
         switch (curAction.type)
         {
             case Action.ActionTypes.MoveTowards:
-                Vector3 dir = ((Vector3Int)refFlowField.GetCellFromWorldPos(gameObject.transform.position).bestDirection.Vector);
-                Vector3 velocity = dir * unitInfo.GetMovementSpeed();
-                curAction.MoveTowards(ref rb, velocity, refFlowField.destinationCell.worldPosition);
+                curAction.MoveInFlowField(ref rb, unitInfo.GetMovementSpeed());
                 break;
             case Action.ActionTypes.StopAction:
                 curAction.StopAction(ref rb);
@@ -54,15 +57,11 @@ public class ActionController : MonoBehaviour
         }
     }
 
-    public void DequeueActionToCurrentAction()
+    private void DequeueActionToCurrentAction()
     {
         if (actionQueue.Count == 0) { return; }
-        if (curAction.isFinished == false) { return; }
         curAction = actionQueue.Dequeue();
     }
 
-    public void EnqueueAction(Action _action)
-    {
-        actionQueue.Enqueue(_action);
-    }
+    
 }

@@ -17,6 +17,9 @@ public class FlowField
     private float cellDiameter;
     private Vector3 cellHalfExtents;
 
+    //List of units that will refer to this flowfield
+    private List<Unit> unitList;
+
     /// <summary>
     /// Constructor of a flowfield with specified cell radius and grid size
     /// </summary>
@@ -28,6 +31,12 @@ public class FlowField
         cellDiameter = cellRadius * 2f;
         cellHalfExtents = Vector3.one * cellRadius;
         gridSize = _gridSize;
+        unitList = new List<Unit>();
+    }
+
+    public void AddToUnitList(Unit _unit)
+    {
+        unitList.Add(_unit);
     }
 
     /// <summary>

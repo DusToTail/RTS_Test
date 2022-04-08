@@ -10,7 +10,7 @@ public class Unit : MonoBehaviour, EntityInterface
     public Vector3 size3D;
 
     [SerializeField]
-    private float setMovementSpeed;
+    private float setMovementSpeed = 0;
 
     
 
@@ -26,8 +26,6 @@ public class Unit : MonoBehaviour, EntityInterface
         entityType = EntityInterface.EntityTypes.SelectableUnit;
         footPosition = transform;
         size3D = col.bounds.size;
-
-        setMovementSpeed = 0;
 
     }
 

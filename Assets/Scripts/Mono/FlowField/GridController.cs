@@ -1,50 +1,51 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 public class GridController : MonoBehaviour
 {
     public Vector2Int gridSize;
     public float cellRadius = 0.5f;
-    public FlowField curFlowField;
+    public static List<FlowField> flowFieldList;
 
-    private void InitializeFlowField()
+    private void Awake()
     {
-        curFlowField = new FlowField(cellRadius, gridSize);
-        curFlowField.CreateGrid();
+        flowFieldList = new List<FlowField>();
     }
 
+    private void Start()
+    {
+        
+    }
 
     private void Update()
     {
-        if(Input.GetMouseButtonDown(0))
-        {
-            InitializeFlowField();
-
-            curFlowField.CreateCostField();
-
-            Vector3 mousePos = Input.mousePosition;
-            Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(mousePos);
-            Cell destinationCell = curFlowField.GetCellFromWorldPos(worldMousePos);
-            curFlowField.CreateIntegrationField(destinationCell);
-
-            curFlowField.CreateFlowField();
-
-            GridDebug.SetCurFlowField(curFlowField);
-            GridDebug.DrawFlowField();
-            //Debug.Log("Mouse Clicked at Screen Coordinates " + mousePos.x + " " + mousePos.y + " " + mousePos.z);
-            //Debug.Log("Mouse clicked at world coordinates " + worldMousePos.x + " " + worldMousePos.y + " " + worldMousePos.z);
-            //Debug.Log("Cell clicked is " + destinationCell.gridPosition.x + " " + destinationCell.gridPosition.y);
-        }
-
-        if (Input.GetMouseButtonDown(1))
-        {
-            curFlowField = null;
-            GridDebug.SetCurFlowField(null);
-            GridDebug.ClearChild();
-            //Debug.Log("Mouse Right Clicked");
-        }
+        Debug.Log(flowFieldList.Count);
     }
 
+    public void AddNewFlowField(Vector3 _worldMousePos, ref Action _action)
+    {
+        FlowField newFlowField = new FlowField(cellRadius, gridSize);
+        newFlowField.CreateGrid();
+
+        newFlowField.CreateCostField();
+
+        Cell destinationCell = newFlowField.GetCellFromWorldPos(_worldMousePos);
+
+        newFlowField.CreateIntegrationField(destinationCell);
+        newFlowField.CreateFlowField();
+
+
+        GridDebug.SetCurFlowField(newFlowField);
+        GridDebug.DrawFlowField();
+        //Debug.Log("Mouse Clicked at Screen Coordinates " + mousePos.x + " " + mousePos.y + " " + mousePos.z);
+        //Debug.Log("Mouse clicked at world coordinates " + worldMousePos.x + " " + worldMousePos.y + " " + worldMousePos.z);
+        //Debug.Log("Cell clicked is " + destinationCell.gridPosition.x + " " + destinationCell.gridPosition.y);
+
+        flowFieldList.Add(newFlowField);
+
+        _action.flowFieldIndex = flowFieldList.Count - 1;
+    }
 
 }
