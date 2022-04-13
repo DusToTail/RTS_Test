@@ -7,6 +7,7 @@ public class FlowField
     /// <summary>
     /// DESCRIPTION: Flow Field is a structure that provide the information of the best cost to take and the consequent direction 
     /// towards the destination on the grid for each cell.
+    /// Declared and Initialized in SelectGroup ( ONE flow field for MANY actions), which is created as a game object in SelectSystem
     /// </summary>
     
     public Cell[,] grid { get; private set; }
@@ -14,11 +15,10 @@ public class FlowField
     public float cellRadius { get; private set; }
     public Cell destinationCell;
 
+
     private float cellDiameter;
     private Vector3 cellHalfExtents;
 
-    //List of units that will refer to this flowfield
-    private List<Unit> unitList;
 
     /// <summary>
     /// Constructor of a flowfield with specified cell radius and grid size
@@ -31,12 +31,6 @@ public class FlowField
         cellDiameter = cellRadius * 2f;
         cellHalfExtents = Vector3.one * cellRadius;
         gridSize = _gridSize;
-        unitList = new List<Unit>();
-    }
-
-    public void AddToUnitList(Unit _unit)
-    {
-        unitList.Add(_unit);
     }
 
     /// <summary>
@@ -195,7 +189,5 @@ public class FlowField
         return grid[x, y];
 
     }
-
-
 
 }

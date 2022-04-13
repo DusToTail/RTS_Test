@@ -5,14 +5,14 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody), typeof(Collider))]
 public class Unit : MonoBehaviour, EntityInterface
 {
+    // DESCRIPTION: class that contains the basic information (such as health and speed) and methods of all units.
+
     public EntityInterface.EntityTypes entityType;
     public Transform footPosition;
     public Vector3 size3D;
 
     [SerializeField]
     private float setMovementSpeed = 0;
-
-    
 
     //Components
     private Rigidbody rb;
@@ -39,15 +39,12 @@ public class Unit : MonoBehaviour, EntityInterface
 
     }
 
-
-    
-
-
     public float GetMovementSpeed()
     {
         return setMovementSpeed;
     }
 
+    // IMPLEMENTATION for EntityInterface
     public void DisplayPosition()
     {
         Debug.Log(this.gameObject.name + " is currently at position " + transform.position);
