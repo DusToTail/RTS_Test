@@ -149,11 +149,13 @@ public class SelectSystem : MonoBehaviour
     // Add units detected by Physics.OverlapBox() at the center position of click and release, with offset towards the ground.
     private void AddUnitsToList()
     {
-        Vector3 checkPosition = (leftClickMousePosition_Click + leftClickMousePosition_Release) / 2;
-        int selectHitBoxSize = Mathf.FloorToInt(Vector3.Distance(leftClickMousePosition_Click, leftClickMousePosition_Release) / Mathf.Sqrt(2));
-        Vector3 selectHitBox = Vector3.one * selectHitBoxSize + Vector3.up * 1000;
+        Vector3 sum = leftClickMousePosition_Click + leftClickMousePosition_Release;
+        Vector3 subtract = leftClickMousePosition_Click - leftClickMousePosition_Release;
+        Vector3 checkPosition = sum / 2;
+        Vector3 checkBoxSize2D = new Vector3(Mathf.Abs(subtract.x), 0, Mathf.Abs(subtract.z));
+        Vector3 selectHitBox =   checkBoxSize2D + Vector3.up * 100;
 
-        Collider[] colliders = Physics.OverlapBox(checkPosition, selectHitBox, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
+        Collider[] colliders = Physics.OverlapBox(checkPosition, selectHitBox / 2, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
 
         foreach(Collider collider in colliders)
         {
@@ -215,9 +217,12 @@ public class SelectSystem : MonoBehaviour
     {
         if(!displayGizmos) { return; }
         Gizmos.color = Color.red;
-        Vector3 checkPosition = (leftClickMousePosition_Click + leftClickMousePosition_Release) / 2;
-        int selectHitBoxSize = Mathf.FloorToInt(Vector3.Distance(leftClickMousePosition_Click, leftClickMousePosition_Release) / Mathf.Sqrt(2));
-        Vector3 selectHitBox = Vector3.one * selectHitBoxSize + Vector3.up * 100;
+        Vector3 sum = leftClickMousePosition_Click + leftClickMousePosition_Release;
+        Vector3 subtract = leftClickMousePosition_Click - leftClickMousePosition_Release;
+        Vector3 checkPosition = sum / 2;
+        Vector3 checkBoxSize2D = new Vector3(Mathf.Abs(subtract.x), 0, Mathf.Abs(subtract.z));
+        Vector3 selectHitBox = checkBoxSize2D + Vector3.up * 100;
+
         Gizmos.DrawWireCube(checkPosition, selectHitBox);
 
         DisplayUnitList();
