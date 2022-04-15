@@ -7,15 +7,21 @@ public class SelectGroup : MonoBehaviour
     /// <summary>
     /// DESCRIPTION: A select group is a game object that connects ALL the actions declared by SelectSystem and ONE Flow Field.
     /// All Actions will have reference to ONE SINGLE Flow Field (to reduce memory usage) when navigating towards the destination
-    /// Select group will have reference to ALL Actions using its Flow Field to check if they are all finished to self-destruct
+    /// Select group will have reference to ALL Actions and related Units using its Flow Field to check if they are all finished to self-destruct
     /// </summary>
     public FlowField groupFlowField { get; private set; }
 
-    private List<Action> actionList;
+    public List<Action> actionList { get; private set; }
+
+    public List<Unit> unitList { get; private set; }
+
+    public Vector3 centerPosition { get; private set; }
+    public Vector3 frontPosition { get; private set; }
 
     private void Awake()
     {
         actionList = new List<Action>();
+        unitList = new List<Unit>();
         groupFlowField = new FlowField(FindObjectOfType<GridController>().cellRadius, FindObjectOfType<GridController>().gridSize);
         groupFlowField.CreateGrid();
         groupFlowField.CreateCostField();
@@ -32,6 +38,8 @@ public class SelectGroup : MonoBehaviour
     {
         if (CheckIfAllActionsIsFinished() == true)
             Destroy(this.gameObject);
+
+        UpdateRelativePosition();
 
     }
 
@@ -53,7 +61,14 @@ public class SelectGroup : MonoBehaviour
     /// <param name="_action"></param>
     public void AddToActionList(ref Action _action)
     {
+        if(_action == null) { return; }
         actionList.Add(_action);
+    }
+
+    public void AddToUnitList(Unit _unit)
+    {
+        if(_unit == null) { return; }
+        unitList.Add(_unit);
     }
 
     /// <summary>
@@ -71,5 +86,54 @@ public class SelectGroup : MonoBehaviour
             }
         }
         return true;
+    }
+
+    private void UpdateRelativePosition()
+    {
+        centerPosition = Vector3.zero;
+        frontPosition = groupFlowField.destinationCell.worldPosition;
+        float closestDistance = float.MaxValue;
+
+        if (unitList.Count == 0) { return; }
+        for (int index = 0; index < unitList.Count; index++)
+        {
+            if(actionList[index].isFinished == true) { continue; }
+            centerPosition += unitList[index].gameObject.GetComponent<Rigidbody>().position;
+
+            float curDistance = (unitList[index].gameObject.GetComponent<Rigidbody>().position - groupFlowField.destinationCell.worldPosition).magnitude;
+            if (curDistance < closestDistance)
+            {
+                frontPosition = unitList[index].gameObject.GetComponent<Rigidbody>().position;
+                closestDistance = curDistance;
+            }
+        }
+
+        centerPosition = centerPosition / unitList.Count;
+    }
+
+    public bool CenterSameCellWithDestination()
+    {
+        if(unitList.Count == 0) { return false; }
+
+        if (groupFlowField.GetCellFromWorldPos(centerPosition) == groupFlowField.destinationCell)
+            return true;
+        else
+            return false;
+    }
+
+    public Vector3 GetCenterToFrontDirection()
+    {
+        return (frontPosition - centerPosition).normalized;
+    }
+
+    public Vector3 GetCenterToDestinationDirection()
+    {
+        return (groupFlowField.destinationCell.worldPosition - centerPosition).normalized;
+    }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.green;
+        Gizmos.DrawLine(frontPosition + Vector3.up * 2, centerPosition + Vector3.up * 2);
     }
 }

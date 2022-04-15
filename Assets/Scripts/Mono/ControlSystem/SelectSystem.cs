@@ -63,6 +63,9 @@ public class SelectSystem : MonoBehaviour
             leftClickMousePosition_Click = new Vector3(worldMousePos.x, groundWorldPosition.position.y, worldMousePos.z);
             leftClickMousePosition_Release = leftClickMousePosition_Click;
 
+            // Turn selected circle of past units off
+            RenderSelectedUnitCircles(false);
+
             // Reset unit list
             unitList.Clear();
             unitList.TrimExcess();
@@ -85,9 +88,12 @@ public class SelectSystem : MonoBehaviour
             // Calculate left click release position
             Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             leftClickMousePosition_Release = new Vector3(worldMousePos.x, groundWorldPosition.position.y, worldMousePos.z);
-
-            //Add units detected in a box collider (with limits determined by left click-release position) to the list
+            
+            // Add units detected in a box collider (with limits determined by left click-release position) to the list
             AddUnitsToList();
+
+            // Turn selected circle of past units off
+            RenderSelectedUnitCircles(true);
 
             //Debug.Log("Left Released at " + leftClickMousePosition_Release);
         }
@@ -123,16 +129,20 @@ public class SelectSystem : MonoBehaviour
                 // Enqueue action
                 curUnit.gameObject.GetComponent<ActionController>().EnqueueAction(ref curMoveAction, isInstant);
 
-                // Add action to SelectGroup for future reference (self-destruct when no longer used by any action)
+                // Add action and unit to SelectGroup for future reference (self-destruct when no longer used by any action and unit)
                 selectGroup.GetComponent<SelectGroup>().AddToActionList(ref curMoveAction);
+                selectGroup.GetComponent<SelectGroup>().AddToUnitList(curUnit);
             }
 
 
             //Debug.Log("Right Released at " + rightClickMousePosition_Click);
 
             //DEBUG: draw the created flowfield with icons for each cell, indicating path and destination
-            GridDebug.SetCurFlowField(selectGroup.GetComponent<SelectGroup>().groupFlowField);
-            GridDebug.DrawFlowField();
+            if(displayGizmos == true)
+            {
+                GridDebug.SetCurFlowField(selectGroup.GetComponent<SelectGroup>().groupFlowField);
+                GridDebug.DrawFlowField();
+            }
         }
 
         //RIGHT CLICK UP
@@ -204,6 +214,16 @@ public class SelectSystem : MonoBehaviour
         selectFieldBox.SetPositions(vertexArray);
     }
 
+    // Render Selected Unit Circle
+    private void RenderSelectedUnitCircles(bool isOn)
+    {
+        foreach(Unit curUnit in unitList)
+        {
+            curUnit.RenderSelectedCircle(isOn);
+        }
+        
+    }
+
     private void ResetClickReleasePosition()
     {
         leftClickMousePosition_Click = Vector3.zero;
@@ -235,9 +255,9 @@ public class SelectSystem : MonoBehaviour
         if(unitList.Count == 0) { return; }
         for (int i = 0; i < unitList.Count; i++)
         {
-            Debug.Log("Drawing");
+            Debug.Log("Drawing " + unitList[i].gameObject.name);
             Gizmos.color = Color.blue;
-            Gizmos.DrawIcon(unitList[i].gameObject.transform.position + Vector3.up * 10, unitList[i].gameObject.name);
+            Gizmos.DrawIcon(unitList[i].gameObject.transform.position + Vector3.up * 10, "user icon.png", true);
         }
     }
 }

@@ -14,6 +14,8 @@ public class Unit : MonoBehaviour, EntityInterface
     [SerializeField]
     private float setMovementSpeed = 0;
 
+    private GameObject selectedCircle;
+
     //Components
     private Rigidbody rb;
     private Collider col;
@@ -27,6 +29,9 @@ public class Unit : MonoBehaviour, EntityInterface
         footPosition = transform;
         size3D = col.bounds.size;
 
+        selectedCircle = transform.GetChild(0).gameObject;
+        rb.velocity = Vector3.zero;
+
     }
 
     private void Start()
@@ -36,12 +41,37 @@ public class Unit : MonoBehaviour, EntityInterface
 
     private void Update()
     {
-
+        AutoSeparationFromNearbyUnit(0.5f, 3f);
     }
 
-    public float GetMovementSpeed()
+    private void AutoSeparationFromNearbyUnit(float pushForce, float radius)
     {
-        return setMovementSpeed;
+        Collider[] colliders = Physics.OverlapSphere(rb.position, radius, LayerMask.GetMask(Tags.Selectable), QueryTriggerInteraction.Ignore);
+        if(colliders.Length == 0) { return; }
+
+        foreach(Collider collider in colliders)
+        {
+            if(collider.gameObject == this.gameObject) { continue; }
+
+            Vector3 unitPos = collider.gameObject.GetComponent<Rigidbody>().position;
+            Vector3 separateVector = rb.position - unitPos;
+            if(separateVector.magnitude < radius)
+            {
+                Vector3 moveVector = separateVector.normalized * pushForce * (1 - Mathf.Clamp01(separateVector.magnitude / radius));
+                rb.MovePosition(rb.position + moveVector * Time.deltaTime);
+                //Debug.Log(gameObject.name + " is avoiding with " + force);
+            }
+        }
+    }
+
+    public float GetMovementSpeed() { return setMovementSpeed; }
+
+    public void RenderSelectedCircle(bool isOn)
+    {
+        if (isOn == true)
+            selectedCircle.SetActive(true);
+        else
+            selectedCircle.SetActive(false);
     }
 
     // IMPLEMENTATION for EntityInterface

@@ -24,6 +24,8 @@ public class Action
     //Used in ActionController component to see if it should Dequeue the next action or not.
     public bool isFinished;
 
+    public bool destinationReached;
+
     public Vector3 mousePosition;
 
     //The select group (containing a flow field) to navigate with
@@ -33,39 +35,169 @@ public class Action
     {
         type = _type;
         isFinished = false;
+        destinationReached = false;
         mousePosition = Vector3.zero;
         selectGroup = null;
     }
 
     /// <summary>
-    /// MOVE Action: move according to the flowfield in SelectGroup by changing the rigidbody attached
+    /// MOVE Action: move according to the flowfield and flocking (alignment + separation) with others in SelectGroup by changing the rigidbody attached
     /// Executed by ActionController
     /// </summary>
     /// <param name="rb"></param>
     /// <param name="flowField"></param>
     /// <param name="movementSpeed"></param>
-    public void MoveInFlowField(ref Rigidbody rb, FlowField flowField, float movementSpeed)
+    public void MoveInFlowField(ref Rigidbody rb, float movementSpeed)
     {
-        //Validity Check
-        if(flowField == null) { return; }
-        if(isFinished == true) { return; }
-
-        //Goal Check
-        if (flowField.GetCellFromWorldPos(rb.position) == flowField.destinationCell) 
+        // Goal Check
+        if(rb.GetComponent<ActionController>().actionQueue.Count >= 0)
         {
-            //Debug.Log("Action is finished");
-            StopMoving(ref rb);
-            FinishAction();
-            return; 
+            if (selectGroup.GetComponent<SelectGroup>().groupFlowField.GetCellFromWorldPos(rb.position) == selectGroup.GetComponent<SelectGroup>().groupFlowField.destinationCell)
+            {
+                //Debug.Log("Action is finished");
+                StopMoving(ref rb);
+                FinishAction();
+                return;
+            }
         }
 
-        //Move according to the flowfield
-        int x = flowField.GetCellFromWorldPos(rb.gameObject.transform.position).bestDirection.Vector.x;
-        int z = flowField.GetCellFromWorldPos(rb.gameObject.transform.position).bestDirection.Vector.y;
-        Vector3 dir = new Vector3(x, 0, z);
-        rb.velocity = dir.normalized * movementSpeed;
+        //if (selectGroup.GetComponent<SelectGroup>().groupFlowField.GetCellFromWorldPos(rb.position) == selectGroup.GetComponent<SelectGroup>().groupFlowField.destinationCell)
+        //{
+        //    //Debug.Log("Destination Cell Reached");
+        //    destinationReached = true;
+        //}
+
+        //if (selectGroup.GetComponent<SelectGroup>().CenterSameCellWithDestination() == true)
+        //{
+        //    //Debug.Log("Action is finished");
+        //    StopMoving(ref rb);
+        //    FinishAction();
+        //    return;
+        //}
+
+        // Move with RigidBody
+
+        //if (destinationReached == true) 
+        //{
+        //    float distanceFromDestinationCell = (rb.position - selectGroup.GetComponent<SelectGroup>().groupFlowField.destinationCell.worldPosition).magnitude;
+        //    float weight = 1 - Mathf.Clamp01(distanceFromDestinationCell);
+        //    rb.MovePosition(rb.position + selectGroup.GetComponent<SelectGroup>().GetCenterToDestinationDirection() * movementSpeed * weight * Time.deltaTime);
+        //    return; 
+        //}
+
+        Vector3 flowFieldVector = GetFlowFieldVector(rb.position) * GetFlowFieldWeight(rb.position);
+        Vector3 alignmentVector = GetAlignmentVector(rb.position, 1f, 3f) * GetAlignmentWeight(rb.position, 1f);
+        Vector3 separationVector = GetSeparationVector(rb.position, 1f, 3f) * GetSeparationWeight(rb.position, 1f);
+
+
+        Vector3 moveDir = flowFieldVector + alignmentVector + separationVector;
+        // rb.velocity cause other unit's transform to change
+        // rb.velocity = dir.normalized * movementSpeed;
+        rb.MovePosition(rb.position + moveDir.normalized * movementSpeed * Time.deltaTime);
     }
 
+    private Vector3 GetFlowFieldVector(Vector3 curWorldPos)
+    {
+        // Validity Check
+        if (selectGroup.GetComponent<SelectGroup>().groupFlowField == null) { return Vector3.zero; }
+        if (isFinished == true) { return Vector3.zero; }
+
+        // Goal Check
+        if (selectGroup.GetComponent<SelectGroup>().groupFlowField.GetCellFromWorldPos(curWorldPos) == 
+            selectGroup.GetComponent<SelectGroup>().groupFlowField.destinationCell)
+        {
+            return Vector3.zero;
+        }
+
+        // Calculate direction from flowfield
+        int x = selectGroup.GetComponent<SelectGroup>().groupFlowField.GetCellFromWorldPos(curWorldPos).bestDirection.Vector.x;
+        int z = selectGroup.GetComponent<SelectGroup>().groupFlowField.GetCellFromWorldPos(curWorldPos).bestDirection.Vector.y;
+        Vector3 flowFieldDir = new Vector3(x, 0, z);
+        return flowFieldDir.normalized;
+    }
+
+    private float GetFlowFieldWeight(Vector3 curWorldPos)
+    {
+        float weight = 1;
+        weight = Mathf.Clamp01((selectGroup.GetComponent<SelectGroup>().groupFlowField.destinationCell.worldPosition - curWorldPos).magnitude);
+
+        return weight;
+    }
+
+    private Vector3 GetAlignmentVector(Vector3 curWorldPos, float minDistance, float maxDistance)
+    {
+        // Validity Check
+        if (selectGroup.GetComponent<SelectGroup>().groupFlowField == null) { return Vector3.zero; }
+        if (isFinished == true) { return Vector3.zero; }
+
+        Vector3 alignmentDir = new Vector3(0, 0, 0);
+
+        int excludeCount = 0;
+        for(int index = 0; index < selectGroup.GetComponent<SelectGroup>().unitList.Count; index++)
+        {
+            if(selectGroup.GetComponent<SelectGroup>().actionList[index].isFinished == true) { excludeCount++; continue; }
+
+            Vector3 curUnitPos = selectGroup.GetComponent<SelectGroup>().unitList[index].gameObject.GetComponent<Rigidbody>().position;
+            Vector3 flowFieldVector = GetFlowFieldVector(curUnitPos);
+            float distance = Vector3.Distance(curWorldPos, curUnitPos);
+            float weight = ((maxDistance - Mathf.Clamp(distance, minDistance, maxDistance))) / (maxDistance - minDistance);
+            alignmentDir += flowFieldVector * weight;
+        }
+        alignmentDir = alignmentDir / (selectGroup.GetComponent<SelectGroup>().unitList.Count - excludeCount);
+
+        return alignmentDir.normalized;
+    }
+
+    private float GetAlignmentWeight(Vector3 curWorldPos, float minDistance)
+    {
+        float weight = 1;
+        for (int index = 0; index < selectGroup.GetComponent<SelectGroup>().unitList.Count; index++)
+        {
+            Vector3 curUnitPos = selectGroup.GetComponent<SelectGroup>().unitList[index].gameObject.GetComponent<Rigidbody>().position;
+            if ((curUnitPos - curWorldPos).magnitude < minDistance)
+                weight ++;
+        }
+
+        return weight;
+    }
+
+    private Vector3 GetSeparationVector(Vector3 curWorldPos, float minDistance, float maxDistance)
+    {
+        // Validity Check
+        if (selectGroup.GetComponent<SelectGroup>().groupFlowField == null) { return Vector3.zero; }
+        if (isFinished == true) { return Vector3.zero; }
+
+        Vector3 separationDir = new Vector3(0, 0, 0);
+
+        int excludeCount = 0;
+        for (int index = 0; index < selectGroup.GetComponent<SelectGroup>().unitList.Count; index++)
+        {
+            if (selectGroup.GetComponent<SelectGroup>().actionList[index].isFinished == true) { excludeCount++; continue; }
+
+            Vector3 curUnitPos = selectGroup.GetComponent<SelectGroup>().unitList[index].gameObject.GetComponent<Rigidbody>().position;
+            Vector3 separationVector = curWorldPos - curUnitPos;
+            float weight = ((maxDistance - Mathf.Clamp(separationVector.magnitude, minDistance, maxDistance))) / (maxDistance - minDistance);
+            separationVector =  weight * separationVector.normalized;
+            separationDir += separationVector;
+        }
+
+        separationDir = separationDir / (selectGroup.GetComponent<SelectGroup>().unitList.Count - excludeCount);
+
+        return separationDir.normalized;
+    }
+
+    private float GetSeparationWeight(Vector3 curWorldPos, float minDistance)
+    {
+        float weight = 1;
+        for (int index = 0; index < selectGroup.GetComponent<SelectGroup>().unitList.Count; index++)
+        {
+            Vector3 curUnitPos = selectGroup.GetComponent<SelectGroup>().unitList[index].gameObject.GetComponent<Rigidbody>().position;
+            if ((curUnitPos - curWorldPos).magnitude < minDistance)
+                weight ++;
+        }
+
+        return weight;
+    }
 
     public void FinishAction() { isFinished = true; }
 

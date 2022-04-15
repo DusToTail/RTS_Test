@@ -47,8 +47,7 @@ public class ActionController : MonoBehaviour
     private void ExecuteCurrentAction()
     {
         //Validity Check
-        if (curAction == null) { return; }
-        if(curAction.isFinished == true) { return; }
+        if (curAction == null || curAction.isFinished == true) { return; }
 
         //Switch statement basing on types of actions
         switch (curAction.type)
@@ -56,7 +55,7 @@ public class ActionController : MonoBehaviour
             case Action.ActionTypes.MoveTowards:
                 //Debug.Log(gameObject.name + " is moving");
 
-                curAction.MoveInFlowField(ref rb, curAction.selectGroup.GetComponent<SelectGroup>().groupFlowField, unitInfo.GetMovementSpeed());
+                curAction.MoveInFlowField(ref rb, unitInfo.GetMovementSpeed());
                 break;
 
             case Action.ActionTypes.StopAction:
