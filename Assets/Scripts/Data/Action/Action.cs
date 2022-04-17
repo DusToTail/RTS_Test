@@ -24,8 +24,6 @@ public class Action
     //Used in ActionController component to see if it should Dequeue the next action or not.
     public bool isFinished;
 
-    public bool destinationReached;
-
     public Vector3 mousePosition;
 
     //The select group (containing a flow field) to navigate with
@@ -35,7 +33,6 @@ public class Action
     {
         type = _type;
         isFinished = false;
-        destinationReached = false;
         mousePosition = Vector3.zero;
         selectGroup = null;
     }
@@ -50,50 +47,26 @@ public class Action
     public void MoveInFlowField(ref Rigidbody rb, float movementSpeed)
     {
         // Goal Check
-        if(rb.GetComponent<ActionController>().actionQueue.Count >= 0)
+        if (selectGroup.GetComponent<SelectGroup>().groupFlowField.GetCellFromWorldPos(rb.position) == selectGroup.GetComponent<SelectGroup>().groupFlowField.destinationCell)
         {
-            if (selectGroup.GetComponent<SelectGroup>().groupFlowField.GetCellFromWorldPos(rb.position) == selectGroup.GetComponent<SelectGroup>().groupFlowField.destinationCell)
-            {
-                //Debug.Log("Action is finished");
-                StopMoving(ref rb);
-                FinishAction();
-                return;
-            }
+            //Debug.Log("Action is finished");
+            StopMoving(ref rb);
+            FinishAction();
+            return;
         }
 
-        //if (selectGroup.GetComponent<SelectGroup>().groupFlowField.GetCellFromWorldPos(rb.position) == selectGroup.GetComponent<SelectGroup>().groupFlowField.destinationCell)
-        //{
-        //    //Debug.Log("Destination Cell Reached");
-        //    destinationReached = true;
-        //}
-
-        //if (selectGroup.GetComponent<SelectGroup>().CenterSameCellWithDestination() == true)
-        //{
-        //    //Debug.Log("Action is finished");
-        //    StopMoving(ref rb);
-        //    FinishAction();
-        //    return;
-        //}
-
-        // Move with RigidBody
-
-        //if (destinationReached == true) 
-        //{
-        //    float distanceFromDestinationCell = (rb.position - selectGroup.GetComponent<SelectGroup>().groupFlowField.destinationCell.worldPosition).magnitude;
-        //    float weight = 1 - Mathf.Clamp01(distanceFromDestinationCell);
-        //    rb.MovePosition(rb.position + selectGroup.GetComponent<SelectGroup>().GetCenterToDestinationDirection() * movementSpeed * weight * Time.deltaTime);
-        //    return; 
-        //}
-
+        // Move with Rigidbody
         Vector3 flowFieldVector = GetFlowFieldVector(rb.position) * GetFlowFieldWeight(rb.position);
         Vector3 alignmentVector = GetAlignmentVector(rb.position, 1f, 3f) * GetAlignmentWeight(rb.position, 1f);
         Vector3 separationVector = GetSeparationVector(rb.position, 1f, 3f) * GetSeparationWeight(rb.position, 1f);
 
 
         Vector3 moveDir = flowFieldVector + alignmentVector + separationVector;
-        // rb.velocity cause other unit's transform to change
-        // rb.velocity = dir.normalized * movementSpeed;
+        // rb.velocity cause other unit's transform to change slightly. Reason unknown
+        // rb.velocity = moveDir.normalized * movementSpeed;
         rb.MovePosition(rb.position + moveDir.normalized * movementSpeed * Time.deltaTime);
+        rb.MoveRotation(Quaternion.LookRotation(moveDir.normalized));
+
     }
 
     private Vector3 GetFlowFieldVector(Vector3 curWorldPos)

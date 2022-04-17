@@ -102,22 +102,54 @@ public class SelectSystem : MonoBehaviour
         if (Input.GetMouseButtonDown(1))
         {
             // Move Command
-            // Determine to Queue command OR Overwrite past commands by holding SHIFT or not
-            bool isInstant = true;
-            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-                isInstant = false;
+            MoveCommand();
 
-            // Calculate right click position
+            //Debug.Log("Right Released at " + rightClickMousePosition_Click);
+
+        }
+
+        //RIGHT CLICK UP
+        if (Input.GetMouseButtonUp(1))
+        {
+            // Calculate right click release position
             Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            rightClickMousePosition_Click = new Vector3(worldMousePos.x, groundWorldPosition.position.y, worldMousePos.z);
+            rightClickMousePosition_Release = new Vector3(worldMousePos.x, groundWorldPosition.position.y, worldMousePos.z);
 
-            //Create a Select Group object, containing ALL actions to be created and ONE flow field
-            GameObject selectGroup = new GameObject("SelectGroup " + transform.childCount);
-            selectGroup.transform.SetParent(transform);
-            selectGroup.AddComponent<SelectGroup>();
-            selectGroup.GetComponent<SelectGroup>().InitializeFlowField(worldMousePos);
-            
+            //Debug.Log("Right Released at " + rightClickMousePosition_Release);
+        }
+    }
+
+    /// <summary>
+    /// Command the group of units to move towards a destination specified by mouse position
+    /// </summary>
+    private void MoveCommand()
+    {
+        // Determine to Queue command OR Overwrite past commands by holding SHIFT or not
+        bool isInstant = true;
+        if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+            isInstant = false;
+
+
+        // Calculate right click position
+        Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        rightClickMousePosition_Click = new Vector3(worldMousePos.x, groundWorldPosition.position.y, worldMousePos.z);
+
+        // Create a Select Group object, containing ALL actions to be created and ONE flow field
+        GameObject selectGroup = new GameObject("SelectGroup " + transform.childCount);
+        selectGroup.transform.SetParent(transform);
+        selectGroup.AddComponent<SelectGroup>();
+        selectGroup.GetComponent<SelectGroup>().InitializeCostField();
+
+        // Check if the clicked position is traversible
+        if (selectGroup.GetComponent<SelectGroup>().groupFlowField.GetCellFromWorldPos(rightClickMousePosition_Click).cost < byte.MaxValue)
+        {
             if (unitList.Count == 0) { return; }
+
+            // Initialize the flowfield of select group before using
+            selectGroup.GetComponent<SelectGroup>().InitializeIntegrationField(rightClickMousePosition_Click);
+            selectGroup.GetComponent<SelectGroup>().InitializeFlowField();
+
+            // Adding units and actions to refer from
             foreach (Unit curUnit in unitList)
             {
                 // Create a unique action to enqueue for each unit
@@ -130,29 +162,21 @@ public class SelectSystem : MonoBehaviour
                 curUnit.gameObject.GetComponent<ActionController>().EnqueueAction(ref curMoveAction, isInstant);
 
                 // Add action and unit to SelectGroup for future reference (self-destruct when no longer used by any action and unit)
-                selectGroup.GetComponent<SelectGroup>().AddToActionList(ref curMoveAction);
+                selectGroup.GetComponent<SelectGroup>().AddToActionList(curMoveAction);
                 selectGroup.GetComponent<SelectGroup>().AddToUnitList(curUnit);
             }
-
-
-            //Debug.Log("Right Released at " + rightClickMousePosition_Click);
-
-            //DEBUG: draw the created flowfield with icons for each cell, indicating path and destination
-            if(displayGizmos == true)
-            {
-                GridDebug.SetCurFlowField(selectGroup.GetComponent<SelectGroup>().groupFlowField);
-                GridDebug.DrawFlowField();
-            }
+        }
+        else
+        {
+            Debug.Log("Cant Move There!");
+            Destroy(selectGroup);
         }
 
-        //RIGHT CLICK UP
-        if (Input.GetMouseButtonUp(1))
+        //DEBUG: draw the created flowfield with icons for each cell, indicating path and destination
+        GridDebug.SetCurFlowField(selectGroup.GetComponent<SelectGroup>().groupFlowField);
+        if (displayGizmos == true)
         {
-            // Calculate right click release position
-            Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            rightClickMousePosition_Release = new Vector3(worldMousePos.x, groundWorldPosition.position.y, worldMousePos.z);
-
-            //Debug.Log("Right Released at " + rightClickMousePosition_Release);
+            GridDebug.DrawFlowField();
         }
     }
 

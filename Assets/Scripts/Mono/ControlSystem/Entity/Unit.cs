@@ -14,6 +14,9 @@ public class Unit : MonoBehaviour, EntityInterface
     [SerializeField]
     private float setMovementSpeed = 0;
 
+    [SerializeField]
+    private int setVisionRange = 10;
+
     private GameObject selectedCircle;
 
     //Components
@@ -66,6 +69,8 @@ public class Unit : MonoBehaviour, EntityInterface
 
     public float GetMovementSpeed() { return setMovementSpeed; }
 
+    public int GetVisionRange() { return setVisionRange; }
+
     public void RenderSelectedCircle(bool isOn)
     {
         if (isOn == true)
@@ -88,5 +93,10 @@ public class Unit : MonoBehaviour, EntityInterface
         Debug.Log(this.gameObject.name + " is currently at position " + size3D);
     }
 
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.blue;
+        Gizmos.DrawLine(transform.position, transform.position + transform.forward * 2);
+    }
 
 }

@@ -38,6 +38,10 @@ public class ActionController : MonoBehaviour
     private void Update()
     {
         DequeueActionToCurrentAction();
+    }
+
+    private void FixedUpdate()
+    {
         ExecuteCurrentAction();
     }
 
@@ -82,6 +86,13 @@ public class ActionController : MonoBehaviour
         if (isInstant == true)
         {
             if (curAction != null) { curAction.FinishAction(); }
+
+            
+            while(actionQueue.Count > 0)
+            {
+                curAction = actionQueue.Dequeue();
+                curAction.FinishAction();
+            }
             actionQueue.Clear();
             actionQueue.TrimExcess();
         }
