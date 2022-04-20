@@ -127,6 +127,7 @@ public class Unit : MonoBehaviour, EntityInterface
 
     public void RenderSelectedCircle(bool isOn)
     {
+        if(selectedCircle == null) { return; }
         if (isOn == true)
             selectedCircle.SetActive(true);
         else
@@ -165,6 +166,13 @@ public class Unit : MonoBehaviour, EntityInterface
     {
         Gizmos.color = Color.blue;
         Gizmos.DrawLine(transform.position, transform.position + transform.forward * 2);
+
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(transform.position, setVisionRange);
+
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, setAttackRange);
+
     }
 
 }
