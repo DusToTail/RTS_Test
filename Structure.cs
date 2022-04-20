@@ -15,13 +15,13 @@ public class Structure : MonoBehaviour, EntityInterface
     public Vector3 size3D;
 
     [SerializeField]
-    private int setHealth = 50;
+    private float setHealth = 50;
     [SerializeField]
-    private int setVisionRange = 10;
+    private float setVisionRange = 10;
     [SerializeField]
     private float setBuildingTime = 0;
 
-    private int curHealth;
+    private float curHealth;
 
     private GameObject selectedCircle;
 
@@ -37,6 +37,8 @@ public class Structure : MonoBehaviour, EntityInterface
         footPosition = transform;
         size3D = col.bounds.size;
 
+        setVisionRange *= FindObjectOfType<GridController>().cellRadius * 2;
+
         curHealth = setHealth;
 
         selectedCircle = transform.GetChild(0).gameObject;
@@ -44,7 +46,12 @@ public class Structure : MonoBehaviour, EntityInterface
         rb.velocity = Vector3.zero;
     }
 
-    public void HealthMinus(int amount)
+    private void Update()
+    {
+        if (HasNoHealth()) { Destroy(this.gameObject); }
+    }
+
+    public void HealthMinus(float amount)
     {
         if (amount < 0) { amount = 0; }
 
@@ -52,11 +59,11 @@ public class Structure : MonoBehaviour, EntityInterface
         if (curHealth < 0) { curHealth = 0; }
     }
 
-    public int GetMaxHealth() { return setHealth; }
+    public float GetMaxHealth() { return setHealth; }
 
-    public int GetCurHealth() { return curHealth; }
+    public float GetCurHealth() { return curHealth; }
 
-    public int GetVisionRange() { return setVisionRange; }
+    public float GetVisionRange() { return setVisionRange; }
 
     public float GetBuildingTime() { return setBuildingTime; }
 
@@ -67,6 +74,8 @@ public class Structure : MonoBehaviour, EntityInterface
         else
             selectedCircle.SetActive(false);
     }
+
+    private bool HasNoHealth() { return curHealth <= 0; }
 
     // IMPLEMENTATION for EntityInterface
     public void DisplayPosition()

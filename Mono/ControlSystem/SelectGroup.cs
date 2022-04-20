@@ -13,6 +13,7 @@ public class SelectGroup : MonoBehaviour
    
     public List<FlowField> flowFieldList;
     public FlowField groupFlowField { get; private set; }
+    public GameObject groupTarget { get; private set; }
 
     public List<UnitAction> actionList { get; private set; }
 
@@ -78,6 +79,18 @@ public class SelectGroup : MonoBehaviour
             }
         }
 
+        // Update Flow Field Towards the target ONLY when the group is attacking a SPECIFIC target
+        if(groupTarget == null) { return; }
+        for(int index = 0; index < unitList.Count; index++)
+        {
+            if(unitList[index] == null) { continue; }
+
+            groupFlowField = ReInitializeFlowFieldWithTarget(groupFlowField, groupTarget);
+            break;
+        }
+        
+
+
     }
 
     /// <summary>
@@ -102,6 +115,10 @@ public class SelectGroup : MonoBehaviour
         flowFieldList.Add(_flowField);
     }
 
+    public void InitializeGroupTarget(GameObject target)
+    {
+        groupTarget = target;
+    }
     /// <summary>
     /// Returns false if AT LEAST ONE Action is not finished. If not, true
     /// </summary>
@@ -208,10 +225,24 @@ public class SelectGroup : MonoBehaviour
     public FlowField ReInitializeFlowField(FlowField flowField)
     {
         if(flowField == null) { Debug.Log("Flow Field Ref is null"); return null; }
+
         FlowField newFlowField = new FlowField(flowField.cellRadius, flowField.gridSize);
         newFlowField.CreateGrid();
         newFlowField.CreateCostField();
         Cell destinationCell = newFlowField.GetCellFromWorldPos(flowField.destinationCell.worldPosition);
+        newFlowField.CreateIntegrationField(destinationCell);
+        newFlowField.CreateFlowField();
+        return newFlowField;
+    }
+    public FlowField ReInitializeFlowFieldWithTarget(FlowField flowField, GameObject _target)
+    {
+        if (flowField == null) { Debug.Log("Flow Field Ref is null"); return null; }
+        if(_target == null) { Debug.Log("Target is null"); return null;}
+
+        FlowField newFlowField = new FlowField(flowField.cellRadius, flowField.gridSize);
+        newFlowField.CreateGrid();
+        newFlowField.CreateCostField();
+        Cell destinationCell = newFlowField.GetCellFromWorldPos(_target.GetComponent<Rigidbody>().position);
         newFlowField.CreateIntegrationField(destinationCell);
         newFlowField.CreateFlowField();
         return newFlowField;

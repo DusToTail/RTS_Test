@@ -103,6 +103,50 @@ public class SelectSystem : MonoBehaviour
             {
                 PatrolCommand();
             }
+            else if(inputMode == InputMode.AttackButton)
+            {
+                // Check for enemy at mouse when right click
+                bool hasSpecificTarget = false;
+                GameObject enemy = null;
+
+                Collider[] colliders = Physics.OverlapBox(leftClickMousePosition_Click, Vector3.one + Vector3.up * 100, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
+                foreach (Collider collider in colliders)
+                {
+                    if (collider.gameObject.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.SelectableUnit)
+                    {
+                        if (collider.gameObject.GetComponent<EntityInterface>().GetRelationshipType() == EntityInterface.RelationshipTypes.Enemy)
+                        {
+                            hasSpecificTarget = true;
+                            enemy = collider.gameObject;
+                            break;
+                        }
+                    }
+                    else if (collider.gameObject.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.SelectableStructure)
+                    {
+                        if (collider.gameObject.GetComponent<EntityInterface>().GetRelationshipType() == EntityInterface.RelationshipTypes.Enemy)
+                        {
+                            hasSpecificTarget = true;
+                            enemy = collider.gameObject;
+                            break;
+                        }
+                    }
+                }
+
+                if(hasSpecificTarget == true)
+                {
+                    // Attack Command with target
+                    AttackCommand(enemy);
+
+                    Debug.Log($"Attack {enemy.name}");
+                }
+                else
+                {
+                    // Attack Command without target
+                    AttackCommand(leftClickMousePosition_Click);
+
+                    Debug.Log($"Attack move towards {leftClickMousePosition_Click}");
+                }
+            }
             
 
 
@@ -143,8 +187,49 @@ public class SelectSystem : MonoBehaviour
         // RIGHT CLICK DOWN
         if (Input.GetMouseButtonDown(1))
         {
-            // Move Command
-            MoveCommand();
+            // Calculate right click position
+            Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            rightClickMousePosition_Click = new Vector3(worldMousePos.x, groundWorldPosition.position.y, worldMousePos.z);
+
+
+            // Check for enemy at mouse when right click
+            bool attackEnemy = false;
+            GameObject enemy = null;
+
+            Collider[] colliders = Physics.OverlapBox(rightClickMousePosition_Click, Vector3.one + Vector3.up * 100, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
+            foreach (Collider collider in colliders)
+            {
+                if (collider.gameObject.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.SelectableUnit)
+                {
+                    if(collider.gameObject.GetComponent<EntityInterface>().GetRelationshipType() == EntityInterface.RelationshipTypes.Enemy)
+                    {
+                        attackEnemy = true;
+                        enemy = collider.gameObject;
+                        break;
+                    }
+                }
+                else if (collider.gameObject.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.SelectableStructure)
+                {
+                    if (collider.gameObject.GetComponent<EntityInterface>().GetRelationshipType() == EntityInterface.RelationshipTypes.Enemy)
+                    {
+                        attackEnemy = true;
+                        enemy = collider.gameObject;
+                        break;
+                    }
+                }
+            }
+
+            if (attackEnemy)
+            {
+                // Attack Command
+                AttackCommand(enemy);
+            }
+            else
+            {
+                // Move Command
+                MoveCommand();
+            }
+            
 
             //Debug.Log("Right Released at " + rightClickMousePosition_Click);
 
@@ -160,6 +245,111 @@ public class SelectSystem : MonoBehaviour
             SetInputMode(InputMode.None);
 
             //Debug.Log("Right Released at " + rightClickMousePosition_Release);
+        }
+    }
+
+    private void AttackCommand(GameObject _target)
+    {
+        // Determine to Queue command OR Overwrite past commands by holding SHIFT or not
+        bool isInstant = true;
+        if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+            isInstant = false;
+
+        if (_target == null) { return; }
+
+        if (unitList.Count == 0) { return; }
+
+        Vector3 targetPosition = new Vector3(_target.GetComponent<Rigidbody>().position.x, groundWorldPosition.position.y, _target.GetComponent<Rigidbody>().position.z);
+
+        // Create a Select Group object, containing ALL actions to be created and ONE flow field
+        GameObject selectGroup = new GameObject("SelectGroup " + transform.childCount);
+        selectGroup.transform.SetParent(transform);
+        selectGroup.AddComponent<SelectGroup>();
+        selectGroup.GetComponent<SelectGroup>().InitializeCurrentCostField();
+
+        // Check if the clicked position is traversible
+        if (_target != null)
+        {
+            Debug.Log($"Attack Enemy: {_target.name}");
+            // Initialize the flowfield of select group before using
+            selectGroup.GetComponent<SelectGroup>().InitializeCurrentIntegrationField(targetPosition);
+            selectGroup.GetComponent<SelectGroup>().InitializeCurrentFlowField();
+
+            // Adding units and actions to refer from
+            foreach (Unit curUnit in unitList)
+            {
+                // Create a unique action to enqueue for each unit
+                // Initialize select group for future reference (flow field for navigation)
+                UnitAction curMoveAction = new UnitAction(UnitAction.ActionTypes.AttackTarget);
+                curMoveAction.InitializeMousePosition(targetPosition);
+                curMoveAction.InitializeSelectGroupObject(ref selectGroup);
+                curMoveAction.InitializeCurrentFlowField(selectGroup.GetComponent<SelectGroup>().groupFlowField);
+                curMoveAction.InitializeCurrentTarget(_target);
+
+                // Enqueue action
+                curUnit.gameObject.GetComponent<UnitActionController>().EnqueueAction(ref curMoveAction, isInstant);
+
+                // Add action and unit to SelectGroup for future reference (self-destruct when no longer used by any action and unit)
+                selectGroup.GetComponent<SelectGroup>().AddToActionList(curMoveAction);
+                selectGroup.GetComponent<SelectGroup>().AddToUnitList(curUnit);
+                if(selectGroup.GetComponent<SelectGroup>().groupTarget == null) { selectGroup.GetComponent<SelectGroup>().InitializeGroupTarget(_target); }
+            }
+        }
+        else
+        {
+            Debug.Log("Cant Attack Target There!");
+            Destroy(selectGroup);
+        }
+
+    }
+
+    private void AttackCommand(Vector3 _destination)
+    {
+        // Determine to Queue command OR Overwrite past commands by holding SHIFT or not
+        bool isInstant = true;
+        if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+            isInstant = false;
+
+
+        if (unitList.Count == 0) { return; }
+
+        // Create a Select Group object, containing ALL actions to be created and ONE flow field
+        GameObject selectGroup = new GameObject("SelectGroup " + transform.childCount);
+        selectGroup.transform.SetParent(transform);
+        selectGroup.AddComponent<SelectGroup>();
+        selectGroup.GetComponent<SelectGroup>().InitializeCurrentCostField();
+
+        // Check if the clicked position is traversible
+        if (selectGroup.GetComponent<SelectGroup>().groupFlowField.GetCellFromWorldPos(_destination).cost < byte.MaxValue)
+        {
+            Debug.Log($"Attack Move Towards: {_destination}");
+            // Initialize the flowfield of select group before using
+            selectGroup.GetComponent<SelectGroup>().InitializeCurrentIntegrationField(_destination);
+            selectGroup.GetComponent<SelectGroup>().InitializeCurrentFlowField();
+
+            // Adding units and actions to refer from
+            foreach (Unit curUnit in unitList)
+            {
+                // Create a unique action to enqueue for each unit
+                // Initialize select group for future reference (flow field for navigation)
+                UnitAction curMoveAction = new UnitAction(UnitAction.ActionTypes.AttackMove);
+                curMoveAction.InitializeMousePosition(_destination);
+                curMoveAction.InitializeSelectGroupObject(ref selectGroup);
+                curMoveAction.InitializeSelfFlowField(_destination);
+                curMoveAction.InitializeCurrentFlowField(curMoveAction.selfFlowField);
+
+                // Enqueue action
+                curUnit.gameObject.GetComponent<UnitActionController>().EnqueueAction(ref curMoveAction, isInstant);
+
+                // Add action and unit to SelectGroup for future reference (self-destruct when no longer used by any action and unit)
+                selectGroup.GetComponent<SelectGroup>().AddToActionList(curMoveAction);
+                selectGroup.GetComponent<SelectGroup>().AddToUnitList(curUnit);
+            }
+        }
+        else
+        {
+            Debug.Log("Cant Attack Target There!");
+            Destroy(selectGroup);
         }
     }
 
@@ -254,6 +444,7 @@ public class SelectSystem : MonoBehaviour
             // Adding units and actions to refer from
             foreach (Unit curUnit in unitList)
             {
+                if(curUnit == null) { continue; }
                 // Create a unique action to enqueue for each unit
                 // Initialize select group for future reference (flow field for navigation)
                 UnitAction curMoveAction = new UnitAction(UnitAction.ActionTypes.MoveTowards);

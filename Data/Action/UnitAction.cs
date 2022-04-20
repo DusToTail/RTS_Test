@@ -14,6 +14,7 @@ public class UnitAction
     {
         MoveTowards,
         Patrol,
+        AttackTarget,
         AttackMove,
         StopAction,
         None
@@ -28,14 +29,14 @@ public class UnitAction
 
     public Vector3 mousePosition;
 
-    public GameObject target;
-
     //The select group (containing a flow field) to navigate with
     //For single destination movement
     public GameObject curSelectGroup;
     //For multiple destinations movement
     public FlowField curFlowField;
     public FlowField selfFlowField;
+    public GameObject curTarget;
+
     private int curFlowFieldIndex;
 
 
@@ -47,6 +48,69 @@ public class UnitAction
         curSelectGroup = null;
         curFlowField = null;
         curFlowFieldIndex = 0;
+    }
+
+    public void AttackMove(ref Rigidbody rb, float movementSpeed, float visionRange, float damageAmount, float attackRange, bool canAttack)
+    {
+        float cellDistance = (curFlowField.GetCellFromWorldPos(rb.position).gridPosition - curFlowField.destinationCell.gridPosition).magnitude;
+
+        Collider[] colliders = Physics.OverlapCapsule(rb.position + Vector3.down * 50, rb.position + Vector3.up * 50, visionRange, LayerMask.GetMask(Tags.Selectable));
+        List<GameObject> enemyList = new List<GameObject>();
+
+        foreach (Collider collider in colliders)
+        {
+            if (collider.gameObject.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.SelectableUnit)
+            {
+                if (collider.gameObject.GetComponent<EntityInterface>().GetRelationshipType() == EntityInterface.RelationshipTypes.Enemy)
+                {
+                    enemyList.Add(collider.gameObject);
+                }
+            }
+            else if (collider.gameObject.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.SelectableStructure)
+            {
+                if (collider.gameObject.GetComponent<EntityInterface>().GetRelationshipType() == EntityInterface.RelationshipTypes.Enemy)
+                {
+                    enemyList.Add(collider.gameObject);
+                }
+            }
+        }
+
+        float closestDistance = float.MaxValue;
+        GameObject closestEnemy = null;
+
+        foreach(GameObject curEnemy in enemyList)
+        {
+            float distance = Vector3.Distance(curEnemy.transform.position, curEnemy.transform.forward);
+            if(distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestEnemy = curEnemy;
+            }
+        }
+
+        // Goal Check
+        if (cellDistance < 1 && closestEnemy == null)
+        {
+            Debug.Log("Attack move reached destination and no enemy nearby");
+            Debug.Log("Action is finished");
+            StopMoving(ref rb);
+            FinishAction();
+            return;
+        }
+        else if(closestEnemy != null)
+        {
+            InitializeSelfFlowField(closestEnemy.GetComponent<Rigidbody>().position);
+            InitializeCurrentFlowField(selfFlowField);
+            curTarget = closestEnemy;
+            AttackTarget(ref rb, movementSpeed, damageAmount, attackRange, canAttack, false);
+        }
+        else
+        {
+            InitializeSelfFlowField(mousePosition);
+            InitializeCurrentFlowField(selfFlowField);
+            MoveInFlowField(ref rb, movementSpeed, false);
+        }
+
     }
 
     public void Patrol(ref Rigidbody rb, float movementSpeed)
@@ -87,21 +151,85 @@ public class UnitAction
     }
 
 
-    public void Attack(EntityInterface entity, int amount, float coolDown)
+    public void AttackTarget(ref Rigidbody rb, float movementSpeed, float amount, float range, bool canAttack, bool finishConditionIsOn)
     {
-        if(entity == null) { return; }
-        if (entity.GetEntityType() == EntityInterface.EntityTypes.UnselectableUnit || entity.GetEntityType() == EntityInterface.EntityTypes.UnselectableStructure)
-            return;
-
-        if(entity.GetEntityType() == EntityInterface.EntityTypes.SelectableUnit)
+        if(finishConditionIsOn == true)
         {
-            entity.GetGameObject().GetComponent<Unit>().HealthMinus(amount);
-
+            if (curTarget == null)
+            {
+                Debug.Log("Action is finished");
+                Debug.Log("Action Attack target is null");
+                StopMoving(ref rb);
+                FinishAction();
+                return;
+            }
+            if (curTarget.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.UnselectableUnit || curTarget.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.UnselectableStructure)
+            {
+                Debug.Log("Action is finished");
+                Debug.Log("Action Attack target is Unselectable");
+                StopMoving(ref rb);
+                FinishAction();
+                return;
+            }
         }
-        else if(entity.GetEntityType() == EntityInterface.EntityTypes.SelectableStructure)
-        {
-            entity.GetGameObject().GetComponent<Structure>().HealthMinus(amount);
+        
 
+        // Move if outside range and return (no attacking)
+        float distance = (curTarget.GetComponent<Rigidbody>().position - rb.position).magnitude;
+        if ( distance > (float)range)
+        {
+            // Since group flow field is reinitialize every frame also
+            InitializeCurrentFlowField(curSelectGroup.GetComponent<SelectGroup>().groupFlowField);
+
+            // Move with Rigidbody
+            Vector3 flowFieldVector = GetFlowFieldVector(rb.position) * GetFlowFieldWeight(rb.position);
+            Vector3 alignmentVector = GetAlignmentVector(rb.position, 1f, 3f) * GetAlignmentWeight(rb.position, 1f);
+            Vector3 separationVector = GetSeparationVector(rb.position, 1f, 3f) * GetSeparationWeight(rb.position, 1f);
+
+            Vector3 moveDir = flowFieldVector + alignmentVector + separationVector;
+            // rb.velocity cause other unit's transform to change slightly. Reason unknown
+            // rb.velocity = moveDir.normalized * movementSpeed;
+            if (moveDir == Vector3.zero) { return; }
+
+            rb.MovePosition(rb.position + moveDir.normalized * movementSpeed * Time.deltaTime);
+            rb.MoveRotation(Quaternion.LookRotation(moveDir.normalized));
+            return;
+        }
+
+
+        if(curTarget.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.SelectableUnit)
+        {
+            if(curTarget.GetComponent<Unit>().GetCurHealth() == 0 || curTarget == null)
+            {
+                Debug.Log("Action is finished");
+                StopMoving(ref rb);
+                FinishAction();
+                return;
+            }
+
+            if(canAttack)
+            {
+                curTarget.GetComponent<Unit>().MinusHealth(amount);
+                rb.gameObject.GetComponent<Unit>().SetCurrentAttackCooldown(0);
+                Debug.Log($"Attack {curTarget.name} for  {amount}");
+            }
+        }
+        else if(curTarget.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.SelectableStructure)
+        {
+            if (curTarget.GetComponent<Structure>().GetCurHealth() == 0 || curTarget == null)
+            {
+                Debug.Log("Action is finished");
+                StopMoving(ref rb);
+                FinishAction();
+                return;
+            }
+
+            if(canAttack)
+            {
+                curTarget.GetComponent<Structure>().HealthMinus(amount);
+                rb.gameObject.GetComponent<Unit>().SetCurrentAttackCooldown(0);
+                Debug.Log($"Attack {curTarget.name} for  {amount}");
+            }
         }
     }
 
@@ -114,17 +242,21 @@ public class UnitAction
     /// <param name="rb"></param>
     /// <param name="flowField"></param>
     /// <param name="movementSpeed"></param>
-    public void MoveInFlowField(ref Rigidbody rb, float movementSpeed)
+    public void MoveInFlowField(ref Rigidbody rb, float movementSpeed, bool finishConditionIsOn)
     {
-        float cellDistance = (curFlowField.GetCellFromWorldPos(rb.position).gridPosition - curFlowField.destinationCell.gridPosition).magnitude;
-        // Goal Check
-        if (cellDistance < 1)
+        if(finishConditionIsOn == true)
         {
-            Debug.Log("Action is finished");
-            StopMoving(ref rb);
-            FinishAction();
-            return;
+            float cellDistance = (curFlowField.GetCellFromWorldPos(rb.position).gridPosition - curFlowField.destinationCell.gridPosition).magnitude;
+            // Goal Check
+            if (cellDistance < 1)
+            {
+                Debug.Log("Action is finished");
+                StopMoving(ref rb);
+                FinishAction();
+                return;
+            }
         }
+        
 
         // Move with Rigidbody
         Vector3 flowFieldVector = GetFlowFieldVector(rb.position) * GetFlowFieldWeight(rb.position);
@@ -275,10 +407,10 @@ public class UnitAction
         curFlowField = flowField;
     }
 
-    public void InitializeTarget(ref GameObject _target)
+    public void InitializeCurrentTarget(GameObject target)
     {
-        if(_target == null) { return; }
-        target = _target;
+        if(target == null) { return; }
+        curTarget = target;
     }
 
 }

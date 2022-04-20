@@ -59,7 +59,7 @@ public class UnitActionController : MonoBehaviour
             case UnitAction.ActionTypes.MoveTowards:
                 //Debug.Log(gameObject.name + " is moving");
 
-                curAction.MoveInFlowField(ref rb, unitInfo.GetMovementSpeed());
+                curAction.MoveInFlowField(ref rb, unitInfo.GetMovementSpeed(), true);
                 break;
 
             case UnitAction.ActionTypes.Patrol:
@@ -68,10 +68,16 @@ public class UnitActionController : MonoBehaviour
                 curAction.Patrol(ref rb, unitInfo.GetMovementSpeed());
                 break;
 
+            case UnitAction.ActionTypes.AttackTarget:
+                //Debug.Log(gameObject.name + " is atack moving");
+
+                curAction.AttackTarget(ref rb, unitInfo.GetMovementSpeed(), unitInfo.GetAttackDamage(), unitInfo.GetAttackRange(), unitInfo.CanAttack(), true);
+                break;
+
             case UnitAction.ActionTypes.AttackMove:
                 //Debug.Log(gameObject.name + " is atack moving");
 
-                curAction.MoveInFlowField(ref rb, unitInfo.GetMovementSpeed());
+                curAction.AttackMove(ref rb, unitInfo.GetMovementSpeed(), unitInfo.GetVisionRange(), unitInfo.GetAttackDamage(), unitInfo.GetAttackRange(), unitInfo.CanAttack());
                 break;
 
             case UnitAction.ActionTypes.StopAction:

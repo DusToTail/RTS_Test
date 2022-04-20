@@ -17,19 +17,22 @@ public class Unit : MonoBehaviour, EntityInterface
 
 
     [SerializeField]
-    private int setHealth = 50;
+    private float setHealth = 50;
     [SerializeField]
     private float setMovementSpeed = 0;
     [SerializeField]
-    private int setAttackDamage = 5;
+    private float setAttackDamage = 5;
     [SerializeField]
-    private int setAttackRange = 6;
+    private float setAttackRange = 6;
     [SerializeField]
-    private int setVisionRange = 10;
+    private float setAttackCooldown = 0.5f;
     [SerializeField]
-    private float setBuildingTime = 0;
+    private float setVisionRange = 10;
+    [SerializeField]
+    private float setBuildingTime = 0f;
 
-    private int curHealth;
+    private float curHealth;
+    private float curAttackCooldown;
 
     private GameObject selectedCircle;
 
@@ -45,7 +48,12 @@ public class Unit : MonoBehaviour, EntityInterface
         footPosition = transform;
         size3D = col.bounds.size;
 
+        setAttackRange *= FindObjectOfType<GridController>().cellRadius * 2;
+        setVisionRange *= FindObjectOfType<GridController>().cellRadius * 2;
+
+
         curHealth = setHealth;
+        curAttackCooldown = setAttackCooldown;
 
         selectedCircle = transform.GetChild(0).gameObject;
         rb.velocity = Vector3.zero;
@@ -60,6 +68,11 @@ public class Unit : MonoBehaviour, EntityInterface
     private void Update()
     {
         AutoSeparationFromNearbyUnit(0.5f, 3f);
+        if(CanAttack() == false)
+            SetCurrentAttackCooldown(curAttackCooldown + Time.deltaTime);
+
+        if (HasNoHealth()) { Destroy(this.gameObject); }
+
     }
 
     private void AutoSeparationFromNearbyUnit(float pushForce, float radius)
@@ -82,27 +95,35 @@ public class Unit : MonoBehaviour, EntityInterface
         }
     }
 
-    public void HealthMinus(int amount)
+    public void MinusHealth(float amount)
     {
         if(amount < 0) { amount = 0; }
 
         curHealth -= amount;
         if(curHealth < 0) { curHealth = 0; }
     }
+    public void SetCurrentAttackCooldown(float _time)
+    {
+        curAttackCooldown = _time;
+    }
 
-    public int GetMaxHealth() { return setHealth; }
+    public float GetMaxHealth() { return setHealth; }
 
-    public int GetCurHealth() { return curHealth; }
+    public float GetCurHealth() { return curHealth; }
 
     public float GetMovementSpeed() { return setMovementSpeed; }
 
-    public int GetAttackDamage() { return setAttackDamage; }
+    public float GetAttackDamage() { return setAttackDamage; }
 
-    public int GetAttackRange() { return setAttackRange; }
+    public float GetAttackRange() { return setAttackRange; }
 
-    public int GetVisionRange() { return setVisionRange; }
+    public float GetAttackCooldown() { return setAttackCooldown; }
+
+    public float GetVisionRange() { return setVisionRange; }
 
     public float GetBuildingTime() { return setBuildingTime; }
+
+    public bool CanAttack() { return curAttackCooldown > setAttackCooldown; }
 
     public void RenderSelectedCircle(bool isOn)
     {
@@ -111,6 +132,8 @@ public class Unit : MonoBehaviour, EntityInterface
         else
             selectedCircle.SetActive(false);
     }
+
+    private bool HasNoHealth() { return curHealth <= 0; }
 
     // IMPLEMENTATION for EntityInterface
     public void DisplayPosition()
