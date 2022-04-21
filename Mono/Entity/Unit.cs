@@ -3,54 +3,47 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody), typeof(Collider))]
-public class Unit : MonoBehaviour, EntityInterface
+public class Unit : MonoBehaviour, IUnit
 {
-    // DESCRIPTION: class that contains the basic information (such as health and speed) and methods of all units.
+    // DESCRIPTION:
     [SerializeField]
-    public EntityInterface.EntityTypes entityType;
+    protected IEntity.SelectionType selectionType;
     [SerializeField]
-    public EntityInterface.RelationshipTypes relationshipType;
+    protected IEntity.RelationshipType relationshipType;
     [SerializeField]
-    public Transform footPosition;
-    [SerializeField]
-    public Vector3 size3D;
-
+    protected Sprite portrait;
 
     [SerializeField]
-    private float setHealth = 50;
+    protected float setHealth;
     [SerializeField]
-    private float setMovementSpeed = 0;
+    protected float setMovementSpeed;
     [SerializeField]
-    private float setAttackDamage = 5;
+    protected float setAttackDamage;
     [SerializeField]
-    private float setAttackRange = 6;
+    protected float setAttackRange;
     [SerializeField]
-    private float setAttackCooldown = 0.5f;
+    protected float setAttackCooldown;
     [SerializeField]
-    private float setVisionRange = 10;
+    protected float setVisionRange;
     [SerializeField]
-    private float setBuildingTime = 0f;
+    protected float setBuildingTime;
 
-    private float curHealth;
-    private float curAttackCooldown;
+    protected float curHealth;
+    protected float curAttackCooldown;
 
-    private GameObject selectedCircle;
+    protected GameObject selectedCircle;
 
     //Components
-    private Rigidbody rb;
-    private Collider col;
+    protected Rigidbody rb;
+    protected Collider col;
 
-    private void Awake()
+    public virtual void Awake()
     {
         rb = gameObject.GetComponent<Rigidbody>();
         col = gameObject.GetComponent<Collider>();
 
-        footPosition = transform;
-        size3D = col.bounds.size;
-
         setAttackRange *= FindObjectOfType<GridController>().cellRadius * 2;
         setVisionRange *= FindObjectOfType<GridController>().cellRadius * 2;
-
 
         curHealth = setHealth;
         curAttackCooldown = setAttackCooldown;
@@ -58,26 +51,27 @@ public class Unit : MonoBehaviour, EntityInterface
         selectedCircle = transform.GetChild(0).gameObject;
         rb.velocity = Vector3.zero;
 
+        Debug.Log($"Unit {gameObject.name} Constructed");
     }
 
-    private void Start()
+    public virtual void Start()
     {
 
     }
 
-    private void Update()
+    public virtual void Update()
     {
         AutoSeparationFromNearbyUnit(0.5f, 3f);
         if(CanAttack() == false)
             SetCurrentAttackCooldown(curAttackCooldown + Time.deltaTime);
 
-        if (HasNoHealth()) { Destroy(this.gameObject); }
+        if (HealthIsZero()) { Destroy(this.gameObject); }
 
     }
 
-    private void AutoSeparationFromNearbyUnit(float pushForce, float radius)
+    private void AutoSeparationFromNearbyUnit(float _pushForce, float _radius)
     {
-        Collider[] colliders = Physics.OverlapSphere(rb.position, radius, LayerMask.GetMask(Tags.Selectable), QueryTriggerInteraction.Ignore);
+        Collider[] colliders = Physics.OverlapSphere(rb.position, _radius, LayerMask.GetMask(Tags.Selectable), QueryTriggerInteraction.Ignore);
         if(colliders.Length == 0) { return; }
 
         foreach(Collider collider in colliders)
@@ -86,80 +80,13 @@ public class Unit : MonoBehaviour, EntityInterface
 
             Vector3 unitPos = collider.gameObject.GetComponent<Rigidbody>().position;
             Vector3 separateVector = rb.position - unitPos;
-            if(separateVector.magnitude < radius)
+            if(separateVector.magnitude < _radius)
             {
-                Vector3 moveVector = separateVector.normalized * pushForce * (1 - Mathf.Clamp01(separateVector.magnitude / radius));
+                Vector3 moveVector = separateVector.normalized * _pushForce * (1 - Mathf.Clamp01(separateVector.magnitude / _radius));
                 rb.MovePosition(rb.position + moveVector * Time.deltaTime);
                 //Debug.Log(gameObject.name + " is avoiding with " + force);
             }
         }
-    }
-
-    public void MinusHealth(float amount)
-    {
-        if(amount < 0) { amount = 0; }
-
-        curHealth -= amount;
-        if(curHealth < 0) { curHealth = 0; }
-    }
-    public void SetCurrentAttackCooldown(float _time)
-    {
-        curAttackCooldown = _time;
-    }
-
-    public float GetMaxHealth() { return setHealth; }
-
-    public float GetCurHealth() { return curHealth; }
-
-    public float GetMovementSpeed() { return setMovementSpeed; }
-
-    public float GetAttackDamage() { return setAttackDamage; }
-
-    public float GetAttackRange() { return setAttackRange; }
-
-    public float GetAttackCooldown() { return setAttackCooldown; }
-
-    public float GetVisionRange() { return setVisionRange; }
-
-    public float GetBuildingTime() { return setBuildingTime; }
-
-    public bool CanAttack() { return curAttackCooldown > setAttackCooldown; }
-
-    public void RenderSelectedCircle(bool isOn)
-    {
-        if(selectedCircle == null) { return; }
-        if (isOn == true)
-            selectedCircle.SetActive(true);
-        else
-            selectedCircle.SetActive(false);
-    }
-
-    private bool HasNoHealth() { return curHealth <= 0; }
-
-    // IMPLEMENTATION for EntityInterface
-    public void DisplayPosition()
-    {
-        Debug.Log(this.gameObject.name + " is currently at position " + transform.position);
-    }
-    public void DisplayFootPosition()
-    {
-        Debug.Log(this.gameObject.name + " is currently at position " + footPosition.position);
-    }
-    public void DisplaySize()
-    {
-        Debug.Log(this.gameObject.name + " is currently at position " + size3D);
-    }
-    public EntityInterface.EntityTypes GetEntityType()
-    {
-        return entityType;
-    }
-    public EntityInterface.RelationshipTypes GetRelationshipType()
-    {
-        return relationshipType;
-    }
-    public GameObject GetGameObject()
-    {
-        return this.gameObject;
     }
 
     private void OnDrawGizmos()
@@ -175,4 +102,69 @@ public class Unit : MonoBehaviour, EntityInterface
 
     }
 
+
+    // IMPLEMENTATION for IUnit
+    public IEntity.SelectionType GetSelectionType() { return selectionType; }
+    public IEntity.RelationshipType GetRelationshipType() { return relationshipType; }
+    public Sprite GetPortrait() { return portrait; }
+
+
+    public void MinusHealth(float _amount)
+    {
+        if (_amount < 0) { _amount = 0; }
+        curHealth -= _amount;
+        if (curHealth < 0) { curHealth = 0; }
+    }
+
+    public void PlusHealth(float _amount)
+    {
+        if(_amount < 0) { _amount = 0; }
+        curHealth += _amount;
+        if (_amount > setHealth) { _amount = setHealth; }
+    }
+
+    public bool HealthIsZero() { return curHealth <= 0; }
+
+
+    public void RenderSelectedCircle(bool isOn)
+    {
+        if (selectedCircle == null) { return; }
+        if (isOn == true)
+            selectedCircle.SetActive(true);
+        else
+            selectedCircle.SetActive(false);
+    }
+
+    public void SetCurrentHealth(float _setAmount)
+    {
+        curHealth = _setAmount;
+        if(curHealth < 0) { curHealth = 0; }
+        if(curHealth > setHealth) { curHealth = setHealth; }
+    }
+
+    public void SetCurrentAttackCooldown(float _setTime)
+    {
+        curAttackCooldown = _setTime;
+        if (curAttackCooldown < 0) { curAttackCooldown = 0; }
+    }
+
+    public bool CanAttack() { return curAttackCooldown > setAttackCooldown; }
+
+    public float GetSetHealth() { return setHealth; }
+    public float GetSetMovementSpeed() { return setMovementSpeed; }
+    public float GetSetVisionRange() { return setVisionRange; }
+    public float GetSetAttackDamage() { return setAttackDamage; }
+    public float GetSetAttackRange() { return setAttackRange; }
+    public float GetSetAttackCooldown() { return setAttackCooldown; }
+    public float GetSetBuildingTime() { return setBuildingTime; }
+    
+    public float GetCurrentHealth() { return curHealth; }
+    public float GetCurrentAttackCooldown() { return curAttackCooldown; }
+
+    public GameObject GetSelectedCircle() { return selectedCircle; }
+
+    public Rigidbody GetRigidbody() { return rb; }
+    public Collider GetCollider() { return col; }
+
+    public IEntity.EntityType GetEntityType() { return IEntity.EntityType.Unit; }
 }

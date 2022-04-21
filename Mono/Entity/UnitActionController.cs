@@ -15,13 +15,11 @@ public class UnitActionController : MonoBehaviour
     private UnitAction curAction;
 
     //Components
-    private Rigidbody rb;
     private Unit unitInfo;
 
     private void Awake()
     {
         //Initialization of components, queue and variables;
-        rb = gameObject.GetComponent<Rigidbody>();
         unitInfo = gameObject.GetComponent<Unit>();
 
         actionQueue = new Queue<UnitAction>();
@@ -59,31 +57,31 @@ public class UnitActionController : MonoBehaviour
             case UnitAction.ActionTypes.MoveTowards:
                 //Debug.Log(gameObject.name + " is moving");
 
-                curAction.MoveInFlowField(ref rb, unitInfo.GetMovementSpeed(), true);
+                curAction.MoveInFlowField(unitInfo, unitInfo.GetSetMovementSpeed(), true);
                 break;
 
             case UnitAction.ActionTypes.Patrol:
                 //Debug.Log(gameObject.name + " is patrolling");
 
-                curAction.Patrol(ref rb, unitInfo.GetMovementSpeed());
+                curAction.Patrol(unitInfo, unitInfo.GetSetMovementSpeed());
                 break;
 
             case UnitAction.ActionTypes.AttackTarget:
                 //Debug.Log(gameObject.name + " is atack moving");
 
-                curAction.AttackTarget(ref rb, unitInfo.GetMovementSpeed(), unitInfo.GetAttackDamage(), unitInfo.GetAttackRange(), unitInfo.CanAttack(), true);
+                curAction.AttackTarget(unitInfo, unitInfo.GetSetMovementSpeed(), unitInfo.GetSetAttackDamage(), unitInfo.GetSetAttackRange(), unitInfo.CanAttack(), true);
                 break;
 
             case UnitAction.ActionTypes.AttackMove:
                 //Debug.Log(gameObject.name + " is atack moving");
 
-                curAction.AttackMove(ref rb, unitInfo.GetMovementSpeed(), unitInfo.GetVisionRange(), unitInfo.GetAttackDamage(), unitInfo.GetAttackRange(), unitInfo.CanAttack());
+                curAction.AttackMove(unitInfo, unitInfo.GetSetMovementSpeed(), unitInfo.GetSetVisionRange(), unitInfo.GetSetAttackDamage(), unitInfo.GetSetAttackRange(), unitInfo.CanAttack());
                 break;
 
             case UnitAction.ActionTypes.StopAction:
                 //Debug.Log(gameObject.name + " stopped");
 
-                curAction.StopMoving(ref rb);
+                curAction.StopMoving(unitInfo);
                 curAction.FinishAction();
 
                 actionQueue.Clear();

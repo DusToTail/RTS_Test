@@ -48,7 +48,7 @@ public class SelectSystem : MonoBehaviour
     }
     private InputMode inputMode;
 
-    void Start()
+    private void Awake()
     {
         //Initialization
         unitList = new List<Unit>();
@@ -57,12 +57,13 @@ public class SelectSystem : MonoBehaviour
         inputMode = InputMode.None;
     }
 
-    void Update()
+    private void Start()
     {
-        //DEBUG (not working!)
-        if (Input.GetKeyDown(KeyCode.Space))
-            DisplayUnitList();
+        
+    }
 
+    private void Update()
+    {
         //Move an image in replacement of the default cursor on the screen
         UpdateCursorTransform();
 
@@ -112,18 +113,9 @@ public class SelectSystem : MonoBehaviour
                 Collider[] colliders = Physics.OverlapBox(leftClickMousePosition_Click, Vector3.one + Vector3.up * 100, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
                 foreach (Collider collider in colliders)
                 {
-                    if (collider.gameObject.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.SelectableUnit)
+                    if (collider.gameObject.GetComponent<IEntity>().GetSelectionType() == IEntity.SelectionType.Selectable)
                     {
-                        if (collider.gameObject.GetComponent<EntityInterface>().GetRelationshipType() == EntityInterface.RelationshipTypes.Enemy)
-                        {
-                            hasSpecificTarget = true;
-                            enemy = collider.gameObject;
-                            break;
-                        }
-                    }
-                    else if (collider.gameObject.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.SelectableStructure)
-                    {
-                        if (collider.gameObject.GetComponent<EntityInterface>().GetRelationshipType() == EntityInterface.RelationshipTypes.Enemy)
+                        if (collider.gameObject.GetComponent<IEntity>().GetRelationshipType() == IEntity.RelationshipType.Enemy)
                         {
                             hasSpecificTarget = true;
                             enemy = collider.gameObject;
@@ -132,7 +124,7 @@ public class SelectSystem : MonoBehaviour
                     }
                 }
 
-                if(hasSpecificTarget == true)
+                if (hasSpecificTarget == true)
                 {
                     // Attack Command with target
                     AttackCommand(enemy);
@@ -199,18 +191,9 @@ public class SelectSystem : MonoBehaviour
             Collider[] colliders = Physics.OverlapBox(rightClickMousePosition_Click, Vector3.one + Vector3.up * 100, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
             foreach (Collider collider in colliders)
             {
-                if (collider.gameObject.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.SelectableUnit)
+                if (collider.gameObject.GetComponent<IEntity>().GetSelectionType() == IEntity.SelectionType.Selectable)
                 {
-                    if(collider.gameObject.GetComponent<EntityInterface>().GetRelationshipType() == EntityInterface.RelationshipTypes.Enemy)
-                    {
-                        attackEnemy = true;
-                        enemy = collider.gameObject;
-                        break;
-                    }
-                }
-                else if (collider.gameObject.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.SelectableStructure)
-                {
-                    if (collider.gameObject.GetComponent<EntityInterface>().GetRelationshipType() == EntityInterface.RelationshipTypes.Enemy)
+                    if (collider.gameObject.GetComponent<IEntity>().GetRelationshipType() == IEntity.RelationshipType.Enemy)
                     {
                         attackEnemy = true;
                         enemy = collider.gameObject;
@@ -487,15 +470,18 @@ public class SelectSystem : MonoBehaviour
 
         foreach(Collider collider in colliders)
         {
-            if (collider.gameObject.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.SelectableUnit)
+            if (collider.gameObject.GetComponent<IEntity>().GetSelectionType() == IEntity.SelectionType.Selectable)
             {
-                unitList.Add(collider.gameObject.GetComponent<Unit>());
-                //Debug.Log($"Added {collider.gameObject.name}");
-            }
-            else if(collider.gameObject.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.SelectableStructure)
-            {
-                structureList.Add(collider.gameObject.GetComponent<Structure>());
-                //Debug.Log($"Added {collider.gameObject.name}");
+                if (collider.gameObject.GetComponent<IEntity>().GetEntityType() == IEntity.EntityType.Unit)
+                {
+                    unitList.Add(collider.gameObject.GetComponent<Unit>());
+                    //Debug.Log($"Added {collider.gameObject.name}");
+                }
+                else if(collider.gameObject.GetComponent<IEntity>().GetEntityType() == IEntity.EntityType.Structure)
+                {
+                    structureList.Add(collider.gameObject.GetComponent<Structure>());
+                    //Debug.Log($"Added {collider.gameObject.name}");
+                }
             }
         }
     }
@@ -584,19 +570,6 @@ public class SelectSystem : MonoBehaviour
 
         Gizmos.DrawWireCube(checkPosition, selectHitBox);
 
-        DisplayUnitList();
-
     }
 
-    private void DisplayUnitList()
-    {
-        if (Application.isEditor) { return; }
-        if(unitList.Count == 0) { return; }
-        for (int i = 0; i < unitList.Count; i++)
-        {
-            Debug.Log("Drawing " + unitList[i].gameObject.name);
-            Gizmos.color = Color.blue;
-            Gizmos.DrawIcon(unitList[i].gameObject.transform.position + Vector3.up * 10, "user icon.png", true);
-        }
-    }
 }

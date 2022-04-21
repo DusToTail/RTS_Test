@@ -292,8 +292,7 @@ public class SelectGroup : MonoBehaviour
             }
             else if (hit.gameObject.layer == LayerMask.NameToLayer(Tags.Selectable))
             {
-                if(hit.gameObject.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.SelectableStructure ||
-                    hit.gameObject.GetComponent<EntityInterface>().GetEntityType() == EntityInterface.EntityTypes.UnselectableStructure)
+                if(hit.gameObject.GetComponent<IEntity>().GetEntityType() == IEntity.EntityType.Structure)
                 {
                     cell.IncreaseCost(255);
                     break;

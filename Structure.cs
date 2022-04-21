@@ -3,39 +3,37 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody), typeof(Collider))]
-public class Structure : MonoBehaviour, EntityInterface
+public class Structure : MonoBehaviour, IStructure
 {
+    // DESCRIPTION:
     [SerializeField]
-    public EntityInterface.EntityTypes entityType;
+    protected IEntity.SelectionType selectionType;
     [SerializeField]
-    public EntityInterface.RelationshipTypes relationshipType;
+    protected IEntity.RelationshipType relationshipType;
     [SerializeField]
-    public Transform footPosition;
-    [SerializeField]
-    public Vector3 size3D;
+    protected Sprite portrait;
 
     [SerializeField]
-    private float setHealth = 50;
+    protected float setHealth;
     [SerializeField]
-    private float setVisionRange = 10;
+    protected float setVisionRange;
     [SerializeField]
-    private float setBuildingTime = 0;
+    protected float setBuildingTime;
 
-    private float curHealth;
+    protected float curHealth;
 
-    private GameObject selectedCircle;
+    protected GameObject selectedCircle;
 
     //Components
-    private Rigidbody rb;
-    private Collider col;
+    protected Rigidbody rb;
+    protected Collider col;
 
-    private void Awake()
+    //Components
+
+    public virtual void Awake()
     {
         rb = gameObject.GetComponent<Rigidbody>();
         col = gameObject.GetComponent<Collider>();
-
-        footPosition = transform;
-        size3D = col.bounds.size;
 
         setVisionRange *= FindObjectOfType<GridController>().cellRadius * 2;
 
@@ -44,65 +42,81 @@ public class Structure : MonoBehaviour, EntityInterface
         selectedCircle = transform.GetChild(0).gameObject;
 
         rb.velocity = Vector3.zero;
+        Debug.Log($"Structure {gameObject.name} Constructed");
     }
 
-    private void Update()
+    public virtual void Start()
     {
-        if (HasNoHealth()) { Destroy(this.gameObject); }
+
     }
 
-    public void HealthMinus(float amount)
+    public virtual void Update()
     {
-        if (amount < 0) { amount = 0; }
+        if (HealthIsZero()) { Destroy(this.gameObject); }
+    }
 
-        curHealth -= amount;
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.blue;
+        Gizmos.DrawLine(transform.position, transform.position + transform.forward * 2);
+
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(transform.position, setVisionRange);
+
+    }
+
+
+    // IMPLEMENTATION for IStructure
+    public IEntity.SelectionType GetSelectionType() { return selectionType; }
+    public IEntity.RelationshipType GetRelationshipType() { return relationshipType; }
+    public Sprite GetPortrait() { return portrait; }
+
+
+    public void MinusHealth(float _amount)
+    {
+        if (_amount < 0) { _amount = 0; }
+        curHealth -= _amount;
         if (curHealth < 0) { curHealth = 0; }
     }
 
-    public float GetMaxHealth() { return setHealth; }
+    public void PlusHealth(float _amount)
+    {
+        if (_amount < 0) { _amount = 0; }
+        curHealth += _amount;
+        if (_amount > setHealth) { _amount = setHealth; }
+    }
 
-    public float GetCurHealth() { return curHealth; }
+    public bool HealthIsZero() { return curHealth <= 0; }
 
-    public float GetVisionRange() { return setVisionRange; }
-
-    public float GetBuildingTime() { return setBuildingTime; }
 
     public void RenderSelectedCircle(bool isOn)
     {
+        if (selectedCircle == null) { return; }
         if (isOn == true)
             selectedCircle.SetActive(true);
         else
             selectedCircle.SetActive(false);
     }
 
-    private bool HasNoHealth() { return curHealth <= 0; }
-
-    // IMPLEMENTATION for EntityInterface
-    public void DisplayPosition()
+    public void SetCurrentHealth(float _setAmount)
     {
-        Debug.Log(this.gameObject.name + " is currently at position " + transform.position);
-    }
-    public void DisplayFootPosition()
-    {
-        Debug.Log(this.gameObject.name + " is currently at position " + footPosition.position);
-    }
-    public void DisplaySize()
-    {
-        Debug.Log(this.gameObject.name + " is currently at position " + size3D);
-    }
-    public EntityInterface.EntityTypes GetEntityType()
-    {
-        return entityType;
-    }
-    public EntityInterface.RelationshipTypes GetRelationshipType()
-    {
-        return relationshipType;
-    }
-    public GameObject GetGameObject()
-    {
-        return this.gameObject;
+        curHealth = _setAmount;
+        if (curHealth < 0) { curHealth = 0; }
+        if (curHealth > setHealth) { curHealth = setHealth; }
     }
 
+    public float GetSetHealth() { return setHealth; }
+    public float GetSetVisionRange() { return setVisionRange; }
+    public float GetSetBuildingTime() { return setBuildingTime; }
+
+    public float GetCurrentHealth() { return curHealth; }
+
+    public GameObject GetSelectedCircle() { return selectedCircle; }
+
+    public Rigidbody GetRigidbody() { return rb; }
+    public Collider GetCollider() { return col; }
+
+    public IEntity.EntityType GetEntityType() { return IEntity.EntityType.Structure; }
 
 
 }
