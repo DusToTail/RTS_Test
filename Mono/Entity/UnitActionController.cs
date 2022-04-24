@@ -11,8 +11,8 @@ public class UnitActionController : MonoBehaviour
     /// </summary>
     /// 
     
-    public Queue<UnitAction> actionQueue { get; private set; }
-    private UnitAction curAction;
+    public Queue<IAction> actionQueue { get; private set; }
+    private IAction curAction;
 
     //Components
     private Unit unitInfo;
@@ -22,10 +22,10 @@ public class UnitActionController : MonoBehaviour
         //Initialization of components, queue and variables;
         unitInfo = gameObject.GetComponent<Unit>();
 
-        actionQueue = new Queue<UnitAction>();
+        actionQueue = new Queue<IAction>();
 
-        curAction = new UnitAction(UnitAction.ActionTypes.None);
-        curAction.FinishAction();
+        curAction = new MarineAction(MarineAction.Type.None, null);
+        curAction.Stop();
 
     }
     private void Start()
@@ -51,63 +51,46 @@ public class UnitActionController : MonoBehaviour
         //Validity Check
         if (curAction == null || curAction.isFinished == true) { return; }
 
-        //Switch statement basing on types of actions
-        switch (curAction.type)
+        if(curAction.GetSelf().type == curAction.GetSelf().Type.MoveTowards)
         {
-            case UnitAction.ActionTypes.MoveTowards:
-                //Debug.Log(gameObject.name + " is moving");
-
-                curAction.MoveInFlowField(unitInfo, unitInfo.GetSetMovementSpeed(), true);
-                break;
-
-            case UnitAction.ActionTypes.Patrol:
-                //Debug.Log(gameObject.name + " is patrolling");
-
-                curAction.Patrol(unitInfo, unitInfo.GetSetMovementSpeed());
-                break;
-
-            case UnitAction.ActionTypes.AttackTarget:
-                //Debug.Log(gameObject.name + " is atack moving");
-
-                curAction.AttackTarget(unitInfo, unitInfo.GetSetMovementSpeed(), unitInfo.GetSetAttackDamage(), unitInfo.GetSetAttackRange(), unitInfo.CanAttack(), true);
-                break;
-
-            case UnitAction.ActionTypes.AttackMove:
-                //Debug.Log(gameObject.name + " is atack moving");
-
-                curAction.AttackMove(unitInfo, unitInfo.GetSetMovementSpeed(), unitInfo.GetSetVisionRange(), unitInfo.GetSetAttackDamage(), unitInfo.GetSetAttackRange(), unitInfo.CanAttack());
-                break;
-
-            case UnitAction.ActionTypes.StopAction:
-                //Debug.Log(gameObject.name + " stopped");
-
-                curAction.StopMoving(unitInfo);
-                curAction.FinishAction();
-
-                actionQueue.Clear();
-                actionQueue.TrimExcess();
-                break;
-
-
-            default:
-                break;
+            curAction.GetSelf().MoveTowards(unitInfo.GetRigidbody(), unitInfo.GetSetMovementSpeed());
+        }
+        else if (curAction.GetSelf().type == curAction.GetSelf().Type.Patrol)
+        {
+            curAction.GetSelf().Patrol(unitInfo.GetRigidbody(), unitInfo.GetSetMovementSpeed());
+        }
+        else if (curAction.GetSelf().type == curAction.GetSelf().Type.AttackTarget)
+        {
+            curAction.GetSelf().AttackTarget(unitInfo.GetRigidbody(), unitInfo.GetSetMovementSpeed(), unitInfo.GetSetAttackDamage(), unitInfo.GetSetAttackRange(), unitInfo.GetSetVisionRange(), unitInfo.CanAttack());
+        }
+        else if (curAction.GetSelf().type == curAction.GetSelf().Type.AttackMove)
+        {
+            curAction.GetSelf().AttackTarget(unitInfo.GetRigidbody(), unitInfo.GetSetMovementSpeed(), unitInfo.GetSetAttackDamage(), unitInfo.GetSetAttackRange(), unitInfo.GetSetVisionRange(), unitInfo.CanAttack());
+        }
+        else if (curAction.GetSelf().type == curAction.GetSelf().Type.StopMoving)
+        {
+            curAction.GetSelf().StopMoving(unitInfo.GetRigidbody());
+        }
+        else if (curAction.GetSelf().type == curAction.GetSelf().Type.Stop)
+        {
+            curAction.GetSelf().Stop();
         }
     }
 
     //[Enqueue] OR [Clear queue, then Enqueue] an action to simulate chain of commands.
     // Called in SelectSystem when right click
     // bool isInstant is false if SHIFT is held when right click. if not, true
-    public void EnqueueAction(ref UnitAction _action, bool isInstant)
+    public void EnqueueAction(IAction _action, bool isInstant)
     {
         if (isInstant == true)
         {
-            if (curAction != null) { curAction.FinishAction(); }
+            if (curAction != null) { curAction.Stop(); }
 
             
             while(actionQueue.Count > 0)
             {
                 curAction = actionQueue.Dequeue();
-                curAction.FinishAction();
+                curAction.Stop();
             }
             actionQueue.Clear();
             actionQueue.TrimExcess();

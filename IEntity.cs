@@ -28,4 +28,9 @@ public interface IEntity
 
     public EntityType GetEntityType();
 
+    public Transform GetTransform();
+    public Vector3 GetWorldPosition();
+
+    public dynamic GetSelf();
+
 }

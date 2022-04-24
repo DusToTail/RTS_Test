@@ -167,4 +167,13 @@ public class Unit : MonoBehaviour, IUnit
     public Collider GetCollider() { return col; }
 
     public IEntity.EntityType GetEntityType() { return IEntity.EntityType.Unit; }
+    public Transform GetTransform() { return transform; }
+    public Vector3 GetWorldPosition() 
+    { 
+        if(rb == null) { return Vector3.zero; }
+
+        return rb.position; 
+    }
+
+    public virtual dynamic GetSelf() { return this; }
 }

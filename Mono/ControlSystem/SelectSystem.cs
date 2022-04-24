@@ -14,8 +14,20 @@ public class SelectSystem : MonoBehaviour
     /// 
     /// Works with Canvas-related components,
     /// </summary>
-    public List<Unit> unitList { get; private set; }
-    public List<Structure> structureList { get; private set; }
+    public List<IUnit> unitList { get; private set; }
+    public List<IStructure> structureList { get; private set; }
+    public List<IEntity> selectableList { get; private set; }
+    public List<SelectGroup> selectGroupList { get; private set; }
+    public SelectGroup curSelectGroup { get; private set; }
+    
+    public enum InputMode
+    {
+        MoveButton,
+        PatrolButton,
+        AttackButton,
+        None
+    }
+    public InputMode inputMode { get; private set; }
 
     // UI reference
     [SerializeField]
@@ -34,25 +46,23 @@ public class SelectSystem : MonoBehaviour
 
     // Mouse click-release position in World Space
     // Å¶Note: the game is set on xz plane, thus y-axis would indicate height.
-    private Vector3 leftClickMousePosition_Click;
-    private Vector3 leftClickMousePosition_Release;
-    private Vector3 rightClickMousePosition_Click;
-    private Vector3 rightClickMousePosition_Release;
+    public Vector3 leftClickMousePosition_Click { get; private set; }
+    public Vector3 leftClickMousePosition_Release {get; private set;}
+    public Vector3 rightClickMousePosition_Click {get; private set;}
+    public Vector3 rightClickMousePosition_Release {get; private set;}
 
-    private enum InputMode
-    {
-        MoveButton,
-        PatrolButton,
-        AttackButton,
-        None
-    }
-    private InputMode inputMode;
-
+    
     private void Awake()
     {
         //Initialization
-        unitList = new List<Unit>();
-        structureList = new List<Structure>();
+        unitList = new List<IUnit>();
+        structureList = new List<IStructure>();
+        selectableList = new List<IEntity>();
+
+        selectGroupList = new List<SelectGroup>();
+        selectGroupList.Capacity = 10;
+        curSelectGroup = null;
+
         ResetClickReleasePosition();
         inputMode = InputMode.None;
     }
@@ -81,6 +91,62 @@ public class SelectSystem : MonoBehaviour
             inputMode = InputMode.PatrolButton;
         }
 
+        // SELECT GROUP INDEXING
+        if(selectableList.Count > 0)
+        {
+            if(Input.GetKeyDown(KeyCode.Keypad1))
+            {
+                AddToSelectGroupList(0);
+                AssignCurrentSelectGroup(0);
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad2))
+            {
+                AddToSelectGroupList(1);
+                AssignCurrentSelectGroup(1);
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad3))
+            {
+                AddToSelectGroupList(2);
+                AssignCurrentSelectGroup(2);
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad4))
+            {
+                AddToSelectGroupList(3);
+                AssignCurrentSelectGroup(3);
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad5))
+            {
+                AddToSelectGroupList(4);
+                AssignCurrentSelectGroup(4);
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad6))
+            {
+                AddToSelectGroupList(5);
+                AssignCurrentSelectGroup(5);
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad7))
+            {
+                AddToSelectGroupList(6);
+                AssignCurrentSelectGroup(6);
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad8))
+            {
+                AddToSelectGroupList(7);
+                AssignCurrentSelectGroup(7);
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad9))
+            {
+                AddToSelectGroupList(8);
+                AssignCurrentSelectGroup(8);
+            }
+            if (Input.GetKeyDown(KeyCode.Keypad0))
+            {
+                AddToSelectGroupList(9);
+                AssignCurrentSelectGroup(9);
+            }
+        }
+
+        // MOUSE INPUT
         // LEFT CLICK DOWN
         if (Input.GetMouseButtonDown(0))
         {
@@ -91,56 +157,6 @@ public class SelectSystem : MonoBehaviour
 
             // Turn selected circle of past units off
             RenderSelectedCircles(false);
-
-            if(inputMode == InputMode.None)
-            {
-                // Reset selectables list
-                unitList.Clear();
-                unitList.TrimExcess();
-                structureList.Clear();
-                structureList.TrimExcess();
-            }
-            else if(inputMode == InputMode.PatrolButton)
-            {
-                PatrolCommand();
-            }
-            else if(inputMode == InputMode.AttackButton)
-            {
-                // Check for enemy at mouse when right click
-                bool hasSpecificTarget = false;
-                GameObject enemy = null;
-
-                Collider[] colliders = Physics.OverlapBox(leftClickMousePosition_Click, Vector3.one + Vector3.up * 100, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
-                foreach (Collider collider in colliders)
-                {
-                    if (collider.gameObject.GetComponent<IEntity>().GetSelectionType() == IEntity.SelectionType.Selectable)
-                    {
-                        if (collider.gameObject.GetComponent<IEntity>().GetRelationshipType() == IEntity.RelationshipType.Enemy)
-                        {
-                            hasSpecificTarget = true;
-                            enemy = collider.gameObject;
-                            break;
-                        }
-                    }
-                }
-
-                if (hasSpecificTarget == true)
-                {
-                    // Attack Command with target
-                    AttackCommand(enemy);
-
-                    Debug.Log($"Attack {enemy.name}");
-                }
-                else
-                {
-                    // Attack Command without target
-                    AttackCommand(leftClickMousePosition_Click);
-
-                    Debug.Log($"Attack move towards {leftClickMousePosition_Click}");
-                }
-            }
-            
-
 
             //Debug.Log("Left Clicked at " + leftClickMousePosition_Click);
         }
@@ -160,16 +176,19 @@ public class SelectSystem : MonoBehaviour
             // Calculate left click release position
             Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             leftClickMousePosition_Release = new Vector3(worldMousePos.x, groundWorldPosition.position.y, worldMousePos.z);
-            
-            if(inputMode == InputMode.None)
+
+            if (inputMode == InputMode.None)
             {
+                // Reset selectables list
+                ClearLists();
+
                 // Add units detected in a box collider (with limits determined by left click-release position) to the list
                 AddSelectablesToList();
 
                 // Turn selected circle of past units off
                 RenderSelectedCircles(true);
             }
-            
+
 
             SetInputMode(InputMode.None);
 
@@ -182,39 +201,14 @@ public class SelectSystem : MonoBehaviour
             // Calculate right click position
             Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             rightClickMousePosition_Click = new Vector3(worldMousePos.x, groundWorldPosition.position.y, worldMousePos.z);
-
-
-            // Check for enemy at mouse when right click
-            bool attackEnemy = false;
-            GameObject enemy = null;
-
-            Collider[] colliders = Physics.OverlapBox(rightClickMousePosition_Click, Vector3.one + Vector3.up * 100, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
-            foreach (Collider collider in colliders)
-            {
-                if (collider.gameObject.GetComponent<IEntity>().GetSelectionType() == IEntity.SelectionType.Selectable)
-                {
-                    if (collider.gameObject.GetComponent<IEntity>().GetRelationshipType() == IEntity.RelationshipType.Enemy)
-                    {
-                        attackEnemy = true;
-                        enemy = collider.gameObject;
-                        break;
-                    }
-                }
-            }
-
-            if (attackEnemy)
-            {
-                // Attack Command
-                AttackCommand(enemy);
-            }
-            else
-            {
-                // Move Command
-                MoveCommand();
-            }
-            
-
+            rightClickMousePosition_Release = rightClickMousePosition_Click;
             //Debug.Log("Right Released at " + rightClickMousePosition_Click);
+
+        }
+
+        // RIGHT CLICK HELD
+        if (Input.GetMouseButton(1))
+        {
 
         }
 
@@ -231,231 +225,11 @@ public class SelectSystem : MonoBehaviour
         }
     }
 
-    private void AttackCommand(GameObject _target)
+    public void SetInputMode(InputMode mode)
     {
-        // Determine to Queue command OR Overwrite past commands by holding SHIFT or not
-        bool isInstant = true;
-        if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-            isInstant = false;
-
-        if (_target == null) { return; }
-
-        if (unitList.Count == 0) { return; }
-
-        Vector3 targetPosition = new Vector3(_target.GetComponent<Rigidbody>().position.x, groundWorldPosition.position.y, _target.GetComponent<Rigidbody>().position.z);
-
-        // Create a Select Group object, containing ALL actions to be created and ONE flow field
-        GameObject selectGroup = new GameObject("SelectGroup " + transform.childCount);
-        selectGroup.transform.SetParent(transform);
-        selectGroup.AddComponent<SelectGroup>();
-        selectGroup.GetComponent<SelectGroup>().InitializeCurrentCostField();
-
-        // Check if the clicked position is traversible
-        if (_target != null)
-        {
-            Debug.Log($"Attack Enemy: {_target.name}");
-            // Initialize the flowfield of select group before using
-            selectGroup.GetComponent<SelectGroup>().InitializeCurrentIntegrationField(targetPosition);
-            selectGroup.GetComponent<SelectGroup>().InitializeCurrentFlowField();
-
-            // Adding units and actions to refer from
-            foreach (Unit curUnit in unitList)
-            {
-                // Create a unique action to enqueue for each unit
-                // Initialize select group for future reference (flow field for navigation)
-                UnitAction curMoveAction = new UnitAction(UnitAction.ActionTypes.AttackTarget);
-                curMoveAction.InitializeMousePosition(targetPosition);
-                curMoveAction.InitializeSelectGroupObject(ref selectGroup);
-                curMoveAction.InitializeCurrentFlowField(selectGroup.GetComponent<SelectGroup>().groupFlowField);
-                curMoveAction.InitializeCurrentTarget(_target);
-
-                // Enqueue action
-                curUnit.gameObject.GetComponent<UnitActionController>().EnqueueAction(ref curMoveAction, isInstant);
-
-                // Add action and unit to SelectGroup for future reference (self-destruct when no longer used by any action and unit)
-                selectGroup.GetComponent<SelectGroup>().AddToActionList(curMoveAction);
-                selectGroup.GetComponent<SelectGroup>().AddToUnitList(curUnit);
-                if(selectGroup.GetComponent<SelectGroup>().groupTarget == null) { selectGroup.GetComponent<SelectGroup>().InitializeGroupTarget(_target); }
-            }
-        }
-        else
-        {
-            Debug.Log("Cant Attack Target There!");
-            Destroy(selectGroup);
-        }
-
+        inputMode = mode;
     }
 
-    private void AttackCommand(Vector3 _destination)
-    {
-        // Determine to Queue command OR Overwrite past commands by holding SHIFT or not
-        bool isInstant = true;
-        if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-            isInstant = false;
-
-
-        if (unitList.Count == 0) { return; }
-
-        // Create a Select Group object, containing ALL actions to be created and ONE flow field
-        GameObject selectGroup = new GameObject("SelectGroup " + transform.childCount);
-        selectGroup.transform.SetParent(transform);
-        selectGroup.AddComponent<SelectGroup>();
-        selectGroup.GetComponent<SelectGroup>().InitializeCurrentCostField();
-
-        // Check if the clicked position is traversible
-        if (selectGroup.GetComponent<SelectGroup>().groupFlowField.GetCellFromWorldPos(_destination).cost < byte.MaxValue)
-        {
-            Debug.Log($"Attack Move Towards: {_destination}");
-            // Initialize the flowfield of select group before using
-            selectGroup.GetComponent<SelectGroup>().InitializeCurrentIntegrationField(_destination);
-            selectGroup.GetComponent<SelectGroup>().InitializeCurrentFlowField();
-
-            // Adding units and actions to refer from
-            foreach (Unit curUnit in unitList)
-            {
-                // Create a unique action to enqueue for each unit
-                // Initialize select group for future reference (flow field for navigation)
-                UnitAction curMoveAction = new UnitAction(UnitAction.ActionTypes.AttackMove);
-                curMoveAction.InitializeMousePosition(_destination);
-                curMoveAction.InitializeSelectGroupObject(ref selectGroup);
-                curMoveAction.InitializeSelfFlowField(_destination);
-                curMoveAction.InitializeCurrentFlowField(curMoveAction.selfFlowField);
-
-                // Enqueue action
-                curUnit.gameObject.GetComponent<UnitActionController>().EnqueueAction(ref curMoveAction, isInstant);
-
-                // Add action and unit to SelectGroup for future reference (self-destruct when no longer used by any action and unit)
-                selectGroup.GetComponent<SelectGroup>().AddToActionList(curMoveAction);
-                selectGroup.GetComponent<SelectGroup>().AddToUnitList(curUnit);
-            }
-        }
-        else
-        {
-            Debug.Log("Cant Attack Target There!");
-            Destroy(selectGroup);
-        }
-    }
-
-    private void PatrolCommand()
-    {
-        // Determine to Queue command OR Overwrite past commands by holding SHIFT or not
-        bool isInstant = true;
-        if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-            isInstant = false;
-
-
-        // Calculate right click position. Also will be the starting point if used in a chain command
-        Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        rightClickMousePosition_Click = new Vector3(worldMousePos.x, groundWorldPosition.position.y, worldMousePos.z);
-
-        if (unitList.Count == 0) { return; }
-
-        // Create a Select Group object, containing ALL actions to be created and ONE flow field
-        GameObject selectGroup = new GameObject("SelectGroup " + transform.childCount);
-        selectGroup.transform.SetParent(transform);
-        selectGroup.AddComponent<SelectGroup>();
-        selectGroup.GetComponent<SelectGroup>().InitializeCurrentCostField();
-
-        // Check if the clicked position is traversible
-        if (selectGroup.GetComponent<SelectGroup>().groupFlowField.GetCellFromWorldPos(rightClickMousePosition_Click).cost < byte.MaxValue)
-        {
-            // Initialize the flowfield of select group before using
-            selectGroup.GetComponent<SelectGroup>().InitializeCurrentIntegrationField(rightClickMousePosition_Click);
-            selectGroup.GetComponent<SelectGroup>().InitializeCurrentFlowField();
-
-            selectGroup.GetComponent<SelectGroup>().AddNewFlowFieldToList(rightClickMousePosition_Click);
-
-            // Adding units and actions to refer from
-            foreach (Unit curUnit in unitList)
-            {
-                Vector3 curUnitPos = curUnit.GetComponent<Rigidbody>().position;
-                curUnitPos = new Vector3(curUnitPos.x, groundWorldPosition.position.y, curUnitPos.z);
-                // Create a unique action to enqueue for each unit
-                // Initialize select group for future reference (flow field for navigation)
-                UnitAction curMoveAction = new UnitAction(UnitAction.ActionTypes.Patrol);
-                curMoveAction.InitializeMousePosition(rightClickMousePosition_Click);
-                curMoveAction.InitializeSelectGroupObject(ref selectGroup);
-                curMoveAction.InitializeSelfFlowField(curUnitPos);
-                curMoveAction.InitializeCurrentFlowField(selectGroup.GetComponent<SelectGroup>().flowFieldList[0]);
-
-
-                // Enqueue action
-                curUnit.gameObject.GetComponent<UnitActionController>().EnqueueAction(ref curMoveAction, isInstant);
-
-                // Add action and unit to SelectGroup for future reference (self-destruct when no longer used by any action and unit)
-                selectGroup.GetComponent<SelectGroup>().AddToActionList(curMoveAction);
-                selectGroup.GetComponent<SelectGroup>().AddToUnitList(curUnit);
-            }
-        }
-        else
-        {
-            Debug.Log("Cant Move There!");
-            Destroy(selectGroup);
-        }
-    }
-
-    /// <summary>
-    /// Command the group of units to move towards a destination specified by mouse position
-    /// </summary>
-    private void MoveCommand()
-    {
-        // Determine to Queue command OR Overwrite past commands by holding SHIFT or not
-        bool isInstant = true;
-        if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-            isInstant = false;
-
-
-        // Calculate right click position
-        Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        rightClickMousePosition_Click = new Vector3(worldMousePos.x, groundWorldPosition.position.y, worldMousePos.z);
-
-        if (unitList.Count == 0) { return; }
-
-        // Create a Select Group object, containing ALL actions to be created and ONE flow field
-        GameObject selectGroup = new GameObject("SelectGroup " + transform.childCount);
-        selectGroup.transform.SetParent(transform);
-        selectGroup.AddComponent<SelectGroup>();
-        selectGroup.GetComponent<SelectGroup>().InitializeCurrentCostField();
-
-        // Check if the clicked position is traversible
-        if (selectGroup.GetComponent<SelectGroup>().groupFlowField.GetCellFromWorldPos(rightClickMousePosition_Click).cost < byte.MaxValue)
-        {
-            // Initialize the flowfield of select group before using
-            selectGroup.GetComponent<SelectGroup>().InitializeCurrentIntegrationField(rightClickMousePosition_Click);
-            selectGroup.GetComponent<SelectGroup>().InitializeCurrentFlowField();
-
-            // Adding units and actions to refer from
-            foreach (Unit curUnit in unitList)
-            {
-                if(curUnit == null) { continue; }
-                // Create a unique action to enqueue for each unit
-                // Initialize select group for future reference (flow field for navigation)
-                UnitAction curMoveAction = new UnitAction(UnitAction.ActionTypes.MoveTowards);
-                curMoveAction.InitializeMousePosition(rightClickMousePosition_Click);
-                curMoveAction.InitializeSelectGroupObject(ref selectGroup);
-                curMoveAction.InitializeCurrentFlowField(selectGroup.GetComponent<SelectGroup>().groupFlowField);
-
-                // Enqueue action
-                curUnit.gameObject.GetComponent<UnitActionController>().EnqueueAction(ref curMoveAction, isInstant);
-
-                // Add action and unit to SelectGroup for future reference (self-destruct when no longer used by any action and unit)
-                selectGroup.GetComponent<SelectGroup>().AddToActionList(curMoveAction);
-                selectGroup.GetComponent<SelectGroup>().AddToUnitList(curUnit);
-            }
-        }
-        else
-        {
-            Debug.Log("Cant Move There!");
-            Destroy(selectGroup);
-        }
-
-        //DEBUG: draw the created flowfield with icons for each cell, indicating path and destination
-        GridDebug.SetCurFlowField(selectGroup.GetComponent<SelectGroup>().groupFlowField);
-        if (displayGizmos == true)
-        {
-            GridDebug.DrawFlowField();
-        }
-    }
 
     // Add units detected by Physics.OverlapBox() at the center position of click and release, with offset towards the ground.
     private void AddSelectablesToList()
@@ -470,20 +244,68 @@ public class SelectSystem : MonoBehaviour
 
         foreach(Collider collider in colliders)
         {
+            if(collider.gameObject.GetComponent<IEntity>().GetRelationshipType() == IEntity.RelationshipType.Enemy) { continue; }
+
             if (collider.gameObject.GetComponent<IEntity>().GetSelectionType() == IEntity.SelectionType.Selectable)
             {
-                if (collider.gameObject.GetComponent<IEntity>().GetEntityType() == IEntity.EntityType.Unit)
+                selectableList.Add(collider.gameObject.GetComponent<IEntity>());
+                if (collider.gameObject.GetComponent<IEntity>() is IUnit)
                 {
                     unitList.Add(collider.gameObject.GetComponent<Unit>());
                     //Debug.Log($"Added {collider.gameObject.name}");
                 }
-                else if(collider.gameObject.GetComponent<IEntity>().GetEntityType() == IEntity.EntityType.Structure)
+                else if (collider.gameObject.GetComponent<IEntity>() is IStructure)
                 {
                     structureList.Add(collider.gameObject.GetComponent<Structure>());
                     //Debug.Log($"Added {collider.gameObject.name}");
                 }
             }
         }
+    }
+
+    private void AddToSelectGroupList(int _groupIndex)
+    {
+        GameObject selectGroup = new GameObject($"Static SelectGroup No.{_groupIndex}");
+        selectGroup.transform.SetParent(transform);
+        selectGroup.AddComponent<SelectGroup>();
+
+        for (int index = 0; index < structureList.Count; index++)
+        {
+            selectGroup.GetComponent<SelectGroup>().entityList.Add(structureList[index]);
+        }
+        for(int index = 0; index < unitList.Count; index++)
+        {
+            selectGroup.GetComponent<SelectGroup>().entityList.Add(unitList[index]);
+        }
+
+        selectGroupList.Insert(_groupIndex, selectGroup.GetComponent<SelectGroup>());
+    }
+    private void AssignCurrentSelectGroup(int _groupIndex)
+    {
+        curSelectGroup = selectGroupList[_groupIndex];
+        ClearLists();
+        foreach(IEntity curEntity in curSelectGroup.entityList)
+        {
+            selectableList.Add(curEntity);
+            if(curEntity is IUnit unit)
+            {
+                unitList.Add(unit);
+            }
+            else if(curEntity is IStructure structure)
+            {
+                structureList.Add(structure);
+            }
+        }
+    }
+
+    private void ClearLists()
+    {
+        unitList.Clear();
+        unitList.TrimExcess();
+        structureList.Clear();
+        structureList.TrimExcess();
+        selectableList.Clear();
+        selectableList.TrimExcess();
     }
 
     // Update the position of the cursor basing on the mouse position (all in pixels, in screen space).
@@ -552,11 +374,7 @@ public class SelectSystem : MonoBehaviour
         rightClickMousePosition_Release = Vector3.zero;
     }
 
-    private void SetInputMode(InputMode mode)
-    {
-        inputMode = mode;
-    }
-
+    
     // DEBUG
     private void OnDrawGizmos()
     {

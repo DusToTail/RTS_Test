@@ -117,6 +117,14 @@ public class Structure : MonoBehaviour, IStructure
     public Collider GetCollider() { return col; }
 
     public IEntity.EntityType GetEntityType() { return IEntity.EntityType.Structure; }
+    public Transform GetTransform() { return transform; }
+    public Vector3 GetWorldPosition()
+    {
+        if (rb == null) { return Vector3.zero; }
 
+        return rb.position;
+    }
+
+    public virtual dynamic GetSelf() { return this; }
 
 }

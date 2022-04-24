@@ -13,26 +13,18 @@ public class SelectGroup : MonoBehaviour
    
     public List<FlowField> flowFieldList;
     public FlowField groupFlowField { get; private set; }
-    public GameObject groupTarget { get; private set; }
+    public IEntity groupTarget { get; private set; }
 
-    public List<UnitAction> actionList { get; private set; }
+    public List<IAction> actionList { get; private set; }
 
-    public List<Unit> unitList { get; private set; }
-
-    //public Vector3 centerPosition { get; private set; }
-    //public Vector3 frontPosition { get; private set; }
-    //public Vector3 backPosition { get; private set; }
-
-    //public Unit frontUnit { get; private set; }
-    //public Unit backUnit { get; private set; }
+    public List<IEntity> entityList { get; private set; }
 
     private bool flowFieldReset;
 
     private void Awake()
     {
         flowFieldList = new List<FlowField>();
-        actionList = new List<UnitAction>();
-        unitList = new List<Unit>();
+        actionList = new List<IAction>();
         groupFlowField = new FlowField(FindObjectOfType<GridController>().cellRadius, FindObjectOfType<GridController>().gridSize);
         groupFlowField.CreateGrid();
         groupFlowField.CreateCostField();
@@ -54,36 +46,39 @@ public class SelectGroup : MonoBehaviour
 
         //UpdateRelativePositionAndUnit();
 
-        for(int index = 0; index < unitList.Count; index++)
+        for(int index = 0; index < entityList.Count; index++)
         {
-            if(CheckIfUnitCollidesWithObstacle(unitList[index], index) && flowFieldReset == true)
+            if(entityList[index] is IUnit unitEntity)
             {
-                Debug.Log("FlowField Changed");
-                flowFieldReset = false;
-                groupFlowField = ReInitializeFlowField(groupFlowField);
-
-                for(int i = 0; i < flowFieldList.Count; i++)
+                if (CheckIfUnitCollidesWithObstacle(unitEntity, index) && flowFieldReset == true)
                 {
-                    flowFieldList[i] = ReInitializeFlowField(flowFieldList[i]);
-                }
+                    Debug.Log("FlowField Changed");
+                    flowFieldReset = false;
+                    groupFlowField = ReInitializeFlowField(groupFlowField);
 
-                for(int i = 0; i < actionList.Count; i++)
-                {
-                    if(actionList[i].type != UnitAction.ActionTypes.MoveTowards)
+                    for (int i = 0; i < flowFieldList.Count; i++)
                     {
-                        actionList[i].selfFlowField = ReInitializeFlowField(actionList[i].selfFlowField);
+                        flowFieldList[i] = ReInitializeFlowField(flowFieldList[i]);
                     }
 
-                    actionList[i].curFlowField = ReInitializeFlowField(actionList[i].curFlowField);
+                    for (int i = 0; i < actionList.Count; i++)
+                    {
+                        if (actionList[i].GetSelf().type != actionList[i].GetSelf().Type.MoveTowards)
+                        {
+                            actionList[i].GetSelf().selfFlowField = ReInitializeFlowField(actionList[i].GetSelf().selfFlowField);
+                        }
+
+                        actionList[i].GetSelf().curFlowField = ReInitializeFlowField(actionList[i].GetSelf().curFlowField);
+                    }
                 }
             }
         }
 
         // Update Flow Field Towards the target ONLY when the group is attacking a SPECIFIC target
         if(groupTarget == null) { return; }
-        for(int index = 0; index < unitList.Count; index++)
+        for(int index = 0; index < entityList.Count; index++)
         {
-            if(unitList[index] == null) { continue; }
+            if(entityList[index] == null) { continue; }
 
             groupFlowField = ReInitializeFlowFieldWithTarget(groupFlowField, groupTarget);
             break;
@@ -97,27 +92,26 @@ public class SelectGroup : MonoBehaviour
     /// Add ONE Action of ONE Unit to the list. Called in SelectSystem
     /// </summary>
     /// <param name="_action"></param>
-    public void AddToActionList(UnitAction _action)
+    public void AddToActionList(IAction _action)
     {
         if(_action == null) { return; }
         actionList.Add(_action);
     }
 
-    public void AddToUnitList(Unit _unit)
+    public void AddToEntityList(IEntity _entity)
     {
-        if(_unit == null) { return; }
-        unitList.Add(_unit);
+        if(_entity == null) { return;}
+        entityList.Add(_entity);
     }
-
     public void AddToFlowFieldList(FlowField _flowField)
     {
         if(_flowField == null) { return; }
         flowFieldList.Add(_flowField);
     }
 
-    public void InitializeGroupTarget(GameObject target)
+    public void AssignGroupTarget(IEntity _target)
     {
-        groupTarget = target;
+        groupTarget = _target;
     }
     /// <summary>
     /// Returns false if AT LEAST ONE Action is not finished. If not, true
@@ -135,69 +129,6 @@ public class SelectGroup : MonoBehaviour
         }
         return true;
     }
-
-    //private void UpdateRelativePositionAndUnit()
-    //{
-    //    centerPosition = Vector3.zero;
-    //    frontPosition = groupFlowField.destinationCell.worldPosition;
-    //    float closestDistance = float.MaxValue;
-    //    float furthestDistance = float.MinValue;
-
-    //    if (unitList.Count == 0) { return; }
-    //    for (int index = 0; index < unitList.Count; index++)
-    //    {
-    //        if(actionList[index].isFinished == true) { continue; }
-    //        centerPosition += unitList[index].gameObject.GetComponent<Rigidbody>().position;
-
-    //        float curDistance = (unitList[index].gameObject.GetComponent<Rigidbody>().position - groupFlowField.destinationCell.worldPosition).magnitude;
-    //        if (curDistance < closestDistance)
-    //        {
-    //            frontPosition = unitList[index].gameObject.GetComponent<Rigidbody>().position;
-    //            frontUnit = unitList[index];
-    //            closestDistance = curDistance;
-    //        }
-
-    //        if(curDistance > furthestDistance)
-    //        {
-    //            backPosition = unitList[index].gameObject.GetComponent<Rigidbody>().position;
-    //            backUnit = unitList[index];
-    //            furthestDistance = curDistance;
-    //        }
-    //    }
-
-    //    centerPosition = centerPosition / unitList.Count;
-    //}
-
-    //public bool CenterSameCellWithDestination()
-    //{
-    //    if(unitList.Count == 0) { return false; }
-
-    //    if (groupFlowField.GetCellFromWorldPos(centerPosition) == groupFlowField.destinationCell)
-    //        return true;
-    //    else
-    //        return false;
-    //}
-
-    //public Vector3 GetCenterToFrontVector()
-    //{
-    //    return (frontPosition - centerPosition);
-    //}
-    //public Vector3 GetCenterToBackVector()
-    //{
-    //    return (backPosition - centerPosition);
-    //}
-    //public Vector3 GetCenterToDestinationVector()
-    //{
-    //    return (groupFlowField.destinationCell.worldPosition - centerPosition);
-    //}
-    //public Vector3 GetFrontToDestinationVector()
-    //{
-    //    return (groupFlowField.destinationCell.worldPosition - frontPosition);
-    //}
-    //public Vector3 GetBackToDestinationVector()
-    //{
-    //    return (groupFlowField.destinationCell.worldPosition - backPosition);
-    //}
 
     
     /// <summary>
@@ -222,39 +153,39 @@ public class SelectGroup : MonoBehaviour
     {
         groupFlowField.CreateGrid();
     }
-    public FlowField ReInitializeFlowField(FlowField flowField)
+    public FlowField ReInitializeFlowField(FlowField _flowField)
     {
-        if(flowField == null) { Debug.Log("Flow Field Ref is null"); return null; }
+        if(_flowField == null) { Debug.Log("Flow Field Ref is null"); return null; }
 
-        FlowField newFlowField = new FlowField(flowField.cellRadius, flowField.gridSize);
+        FlowField newFlowField = new FlowField(_flowField.cellRadius, _flowField.gridSize);
         newFlowField.CreateGrid();
         newFlowField.CreateCostField();
-        Cell destinationCell = newFlowField.GetCellFromWorldPos(flowField.destinationCell.worldPosition);
+        Cell destinationCell = newFlowField.GetCellFromWorldPos(_flowField.destinationCell.worldPosition);
         newFlowField.CreateIntegrationField(destinationCell);
         newFlowField.CreateFlowField();
         return newFlowField;
     }
-    public FlowField ReInitializeFlowFieldWithTarget(FlowField flowField, GameObject _target)
+    public FlowField ReInitializeFlowFieldWithTarget(FlowField _flowField, IEntity _target)
     {
-        if (flowField == null) { Debug.Log("Flow Field Ref is null"); return null; }
+        if (_flowField == null) { Debug.Log("Flow Field Ref is null"); return null; }
         if(_target == null) { Debug.Log("Target is null"); return null;}
 
-        FlowField newFlowField = new FlowField(flowField.cellRadius, flowField.gridSize);
+        FlowField newFlowField = new FlowField(_flowField.cellRadius, _flowField.gridSize);
         newFlowField.CreateGrid();
         newFlowField.CreateCostField();
-        Cell destinationCell = newFlowField.GetCellFromWorldPos(_target.GetComponent<Rigidbody>().position);
+        Cell destinationCell = newFlowField.GetCellFromWorldPos(_target.GetWorldPosition());
         newFlowField.CreateIntegrationField(destinationCell);
         newFlowField.CreateFlowField();
         return newFlowField;
     }
 
     // FlowField List for Patrolling and other complex movement
-    public void AddNewFlowFieldToList(Vector3 destinationPos)
+    public void AddNewFlowFieldToList(Vector3 _destinationPosition)
     {
         FlowField newFlowField = new FlowField(FindObjectOfType<GridController>().cellRadius, FindObjectOfType<GridController>().gridSize);
         newFlowField.CreateGrid();
         newFlowField.CreateCostField();
-        newFlowField.CreateIntegrationField(newFlowField.GetCellFromWorldPos(destinationPos));
+        newFlowField.CreateIntegrationField(newFlowField.GetCellFromWorldPos(_destinationPosition));
         newFlowField.CreateFlowField();
         flowFieldList.Add(newFlowField);
     }
@@ -263,19 +194,19 @@ public class SelectGroup : MonoBehaviour
     /// Return true if the front of the unit contains an unexpected obstacle compared with the group grid.
     /// Comparison is through cost.
     /// </summary>
-    /// <param name="unit"></param>
+    /// <param name="_unit"></param>
     /// <returns></returns>
-    private bool CheckIfUnitCollidesWithObstacle(Unit unit, int unitIndex)
+    private bool CheckIfUnitCollidesWithObstacle(IUnit _unit, int _unitIndex)
     {
-        if(unit == null) { return false; }
+        if(_unit == null) { return false; }
 
         //Check for colliders that identify the property of the terrain at the cell's world position. Here is Impassible OR Rough
         //Additional bool var is added to ensure that each cell's traversing cost only increase ONCE (there can be multiple colliders slightly overlapping)
-        Vector3 forwardPosition = unit.GetComponent<Rigidbody>().position + unit.transform.forward * actionList[unitIndex].curFlowField.cellRadius;
+        Vector3 forwardPosition = _unit.GetWorldPosition() + _unit.GetTransform().forward * actionList[_unitIndex].GetSelf().curFlowField.cellRadius;
         LayerMask terrainMask = LayerMask.GetMask(Tags.Impassible_Terrain, Tags.Rough_Terrain, Tags.Selectable);
-        Vector3 cellHalfExtents = Vector3.one * actionList[unitIndex].curFlowField.cellRadius;
+        Vector3 cellHalfExtents = Vector3.one * actionList[_unitIndex].GetSelf().curFlowField.cellRadius;
 
-        Cell cell = new Cell(actionList[unitIndex].curFlowField.GetCellFromWorldPos(forwardPosition).worldPosition, actionList[unitIndex].curFlowField.GetCellFromWorldPos(forwardPosition).gridPosition);
+        Cell cell = new Cell(actionList[_unitIndex].GetSelf().curFlowField.GetCellFromWorldPos(forwardPosition).worldPosition, actionList[_unitIndex].GetSelf().curFlowField.GetCellFromWorldPos(forwardPosition).gridPosition);
 
         Collider[] hits = Physics.OverlapBox(cell.worldPosition, cellHalfExtents, Quaternion.identity, terrainMask);
         foreach (Collider hit in hits)
@@ -292,7 +223,7 @@ public class SelectGroup : MonoBehaviour
             }
             else if (hit.gameObject.layer == LayerMask.NameToLayer(Tags.Selectable))
             {
-                if(hit.gameObject.GetComponent<IEntity>().GetEntityType() == IEntity.EntityType.Structure)
+                if(hit.gameObject.GetComponent<IEntity>() is IStructure)
                 {
                     cell.IncreaseCost(255);
                     break;
@@ -300,8 +231,8 @@ public class SelectGroup : MonoBehaviour
             }
         }
         
-        if (cell.cost != actionList[unitIndex].curFlowField.grid[cell.gridPosition.x, cell.gridPosition.y].cost &&
-            cell.gridPosition != actionList[unitIndex].curFlowField.destinationCell.gridPosition)
+        if (cell.cost != actionList[_unitIndex].GetSelf().curFlowField.grid[cell.gridPosition.x, cell.gridPosition.y].cost &&
+            cell.gridPosition != actionList[_unitIndex].GetSelf().curFlowField.destinationCell.gridPosition)
         {
             Debug.DrawLine(cell.worldPosition, cell.worldPosition + Vector3.up * 100, Color.yellow);
             return true;
