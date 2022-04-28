@@ -29,6 +29,7 @@ public class CommandCenterAction : IAction, IProduce, IUpgrade
     public Upgrade prefabUpgrade { get; set; }
     public Vector3 spawnPosition { get; set; }
     public Vector3 rallyPosition { get; set; }
+    public List<GameObject> productionList { get; set; }
 
     public float maxProgressTime { get; set; }
     public float curProgressTime { get; set; }
@@ -44,6 +45,7 @@ public class CommandCenterAction : IAction, IProduce, IUpgrade
         prefabUnit = null;
         spawnPosition = Vector3.zero;
         rallyPosition = Vector3.zero;
+        productionList = new List<GameObject>();
         maxProgressTime = 0;
         curProgressTime = 0;
     }
@@ -161,11 +163,12 @@ public class CommandCenterAction : IAction, IProduce, IUpgrade
     }
 
 
-    public void InitializeMoveTowards(Vector3 _moveMousePosition, FlowField _flowField) { return; }
-    public void InitializePatrol(Vector3 _moveMousePosition, Vector3 _curPosition, FlowField _flowField) { return; }
-    public void InitializeAttackTarget(IEntity _target, FlowField _flowField) { return;}
-    public void InitializeAttackMove(Vector3 _attackMovePosition, FlowField _flowField) { return; }
-    public void InitializeSelfFlowField(Vector3 _destinationPosition) { return; }
+    public void InitializeMoveTowards(Vector3 _curPosition, Vector3 _moveMousePosition) { return; }
+    public void InitializePatrol(Vector3 _curPosition, Vector3[] _moveWaypoints) { return; }
+    public void InitializeAttackTarget(IEntity _target) { return;}
+    public void InitializeAttackMove(Vector3 _curPosition, Vector3 _attackMovePosition) { return; }
+    public void InitializeSelfFlowField(Vector3 _curPosition, Vector3 _destinationPosition) { return; }
+
 
     public void AssignUnit(GameObject _prefab)
     {
@@ -185,6 +188,7 @@ public class CommandCenterAction : IAction, IProduce, IUpgrade
     { 
         rallyPosition = _rallyPosition;
     }
+    public void AssignWaypointPosition(Vector3[] _vectors) { return; }
     public void AssignMaxProgressTime(float _time) { maxProgressTime = _time; }
 
     public void AssignSubActions(List<IAction> _actions)
@@ -200,6 +204,10 @@ public class CommandCenterAction : IAction, IProduce, IUpgrade
     public float GetUpgradeTime()
     {
         return 0;
+    }
+    public List<GameObject> GetProductionList()
+    {
+        return productionList;
     }
 
     public List<IAction> GetSubActions() { return subActions; }

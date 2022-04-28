@@ -30,7 +30,7 @@ public class MarineAction : IMarineAction
     public Vector3[] moveWaypoints { get; set; }
     public FlowField curFlowField { get; set; }
     public FlowField selfFlowField { get; set; }
-    public int curFlowFieldIndex { get; set; }
+    public int curWaypointIndex { get; set; }
 
     
 
@@ -52,14 +52,14 @@ public class MarineAction : IMarineAction
 
     public void AttackMove(Rigidbody _rb, float _movementSpeed, float _attackDamage, float _attackRange, float _visionRange, bool _canAttack)
     {
-        float cellDistance = (group.groupFlowField.GetCellFromWorldPos(_rb.position).gridPosition - group.groupFlowField.GetCellFromWorldPos(attackMousePosition).gridPosition).magnitude;
+        float destinationDistance = (_rb.position - attackMousePosition).magnitude;
 
         // Goal Check and Excution of other simpler action
         // 1st situation: if the destination is reached and there is no enemy nearby
         // 2nd situation: if there is enemy nearby
         // 3rd situation: if there is no target
         IEntity closestEnemy = ReturnNearbyEnemy(_rb, _visionRange);
-        if (cellDistance < 1 && closestEnemy == null)
+        if (destinationDistance < 1 && closestEnemy == null)
         {
             Debug.Log("Attack move reached destination and no enemy nearby");
             Debug.Log("Action is finished");
@@ -71,72 +71,13 @@ public class MarineAction : IMarineAction
         {
             if (curTarget != closestEnemy) { curTarget = closestEnemy; }
 
-            if (selfFlowField.GetCellFromWorldPos(curTarget.GetWorldPosition()).gridPosition != selfFlowField.destinationCell.gridPosition)
-            {
-                InitializeSelfFlowField(_rb.position, curTarget.GetWorldPosition());
-                AssignCurrentFlowField(selfFlowField);
-            }
-
-            // MOSTLY Attack Target Implementation
-            // Move if outside range and return (no attacking)
-            float distance = (curTarget.GetWorldPosition() - _rb.position).magnitude - curTarget.GetSelectedCircleRadius();
-            if (distance > (float)_attackRange)
-            {
-                // Move with Rigidbody
-                Vector3 flowFieldVector = GetFlowFieldDirection(_rb.position);
-                Vector3 alignmentVector = GetAlignmentDirection(_rb.position, 1f, 3f);
-                Vector3 separationVector = GetSeparationDirection(_rb.position, 1f, 3f);
-
-                Vector3 moveDir = flowFieldVector + alignmentVector + separationVector;
-                // rb.velocity cause other unit's transform to change slightly. Reason unknown
-                // rb.velocity = moveDir.normalized * movementSpeed;
-                if (moveDir == Vector3.zero) { return; }
-
-                _rb.MovePosition(_rb.position + moveDir.normalized * _movementSpeed * Time.fixedDeltaTime);
-                _rb.MoveRotation(Quaternion.LookRotation(moveDir.normalized));
-                return;
-            }
-
-            if (curTarget.GetSelectionType() == IEntity.SelectionType.Selectable)
-            {
-                if (curTarget is IUnit curTargetUnit)
-                {
-                    if (curTarget == null || curTargetUnit.HealthIsZero())
-                    {
-                        return;
-                    }
-
-                    if (_canAttack)
-                    {
-                        curTargetUnit.MinusHealth(_attackDamage);
-                        _rb.GetComponent<IUnit>().SetCurrentAttackCooldown(0);
-                        //Debug.Log($"{_rb.gameObject.name} Attack {curTarget.name} for  {damageAmount}");
-                    }
-                }
-                else if (curTarget is IStructure curTargetStructure)
-                {
-                    if (curTarget == null || curTargetStructure.HealthIsZero())
-                    {
-                        return;
-                    }
-
-                    if (_canAttack)
-                    {
-                        curTargetStructure.MinusHealth(_attackDamage);
-                        _rb.GetComponent<IUnit>().SetCurrentAttackCooldown(0);
-                        //Debug.Log($"{_rb.gameObject.name} Attack {curTarget.name} for  {damageAmount}");
-                    }
-                }
-            }
+            AttackTarget(_rb, _movementSpeed, _attackDamage, _attackRange, _visionRange, _canAttack);
 
             //Debug.Log($"Trying to Attack {curTarget.name}");
         }
         else
         {
-            if (curFlowField.destinationCell.gridPosition != group.groupFlowField.destinationCell.gridPosition)
-            {
-                AssignCurrentFlowField(group.groupFlowField);
-            }
+            InitializeMoveTowards(_rb.position, attackMousePosition);
             MoveTowards(_rb, _movementSpeed);
             //Debug.Log($"Move Towards destination: {curFlowField.destinationCell.gridPosition}");
         }
@@ -173,26 +114,13 @@ public class MarineAction : IMarineAction
         float distance = (curTarget.GetWorldPosition() - _rb.position).magnitude - curTarget.GetSelectedCircleRadius();
         if (distance > (float)_attackRange)
         {
-            // Since group flow field is reinitialize every frame also
-            AssignCurrentFlowField(group.groupFlowField);
-
-            // Move with Rigidbody
-            Vector3 flowFieldVector = GetFlowFieldDirection(_rb.position);
-            Vector3 alignmentVector = GetAlignmentDirection(_rb.position, 1f, 3f);
-            Vector3 separationVector = GetSeparationDirection(_rb.position, 1f, 3f);
-            //Debug.Log(flowFieldVector);
-            //Debug.Log(alignmentVector);
-            //Debug.Log(separationVector);
-            //Debug.Log(curFlowField.destinationCell.gridPosition);
-            //Debug.Log(curFlowField.GetCellFromWorldPos(_rb.position).gridPosition);
-
-            Vector3 moveDir = flowFieldVector + alignmentVector + separationVector;
-            // rb.velocity cause other unit's transform to change slightly. Reason unknown
-            // rb.velocity = moveDir.normalized * movementSpeed;
-            if (moveDir == Vector3.zero) { return; }
-
-            _rb.MovePosition(_rb.position + moveDir.normalized * _movementSpeed * Time.fixedDeltaTime);
-            _rb.MoveRotation(Quaternion.LookRotation(moveDir.normalized));
+            if(true)
+            {
+                Vector3 offsetDir = new Vector3(_rb.position.x - curTarget.GetWorldPosition().x, 0, _rb.position.z - curTarget.GetWorldPosition().z).normalized;
+                InitializeMoveTowards(_rb.position, curTarget.GetWorldPosition() + offsetDir * curTarget.GetSelectedCircleRadius());
+            }
+            
+            MoveTowards(_rb, _movementSpeed);
             return;
         }
 
@@ -271,49 +199,52 @@ public class MarineAction : IMarineAction
         float cellDistance = (curFlowField.GetCellFromWorldPos(_rb.position).gridPosition - curFlowField.destinationCell.gridPosition).magnitude;
         if (cellDistance < 1)
         {
-            if (curFlowField == selfFlowField)
+            if(curWaypointIndex > moveWaypoints.Length - 1)
             {
-                AssignCurrentFlowField(group.groupFlowField);
+                InitializeMoveTowards(_rb.position, moveWaypoints[0]);
+                curWaypointIndex = 0;
             }
             else
             {
-                AssignCurrentFlowField(selfFlowField);
+                InitializeMoveTowards(_rb.position, moveWaypoints[curWaypointIndex]);
+                curWaypointIndex++;
             }
         }
-
-        // Move with Rigidbody
-        Vector3 flowFieldVector = GetFlowFieldDirection(_rb.position);
-        Vector3 alignmentVector = GetAlignmentDirection(_rb.position, 1f, 3f);
-        Vector3 separationVector = GetSeparationDirection(_rb.position, 1f, 3f);
-
-
-        Vector3 moveDir = flowFieldVector + alignmentVector + separationVector;
-        // rb.velocity cause other unit's transform to change slightly. Reason unknown
-        // rb.velocity = moveDir.normalized * movementSpeed;
-        if (moveDir == Vector3.zero) { return; }
-
-        _rb.MovePosition(_rb.position + moveDir.normalized * _speed * Time.fixedDeltaTime);
-        _rb.MoveRotation(Quaternion.LookRotation(moveDir.normalized));
+        MoveTowards(_rb, _speed);
     }
 
     public void MoveTowards(Rigidbody _rb, float _speed)
     {
+        float destinationDistance = new Vector3(_rb.position.x - moveMousePosition.x, 0, _rb.position.z - moveMousePosition.z).magnitude;
+        Debug.Log(destinationDistance);
         float cellDistance = (curFlowField.GetCellFromWorldPos(_rb.position).gridPosition - curFlowField.destinationCell.gridPosition).magnitude;
         // Goal Check
-        if (cellDistance < 1)
+        if (destinationDistance < 1)
         {
             Debug.Log("Action is finished");
             StopMoving(_rb);
             Stop();
             return;
         }
+        else if(cellDistance < 1)
+        {
+            //Debug.Log("Update current flowfield");
+            Vector2 dir = new Vector2(moveMousePosition.x - _rb.position.x, moveMousePosition.z - _rb.position.z).normalized;
+            float distance = curFlowField.cellRadius * 2 * Mathf.Sqrt(curFlowField.gridSize.x * curFlowField.gridSize.x + curFlowField.gridSize.y * curFlowField.gridSize.y);
+            if(destinationDistance < distance)
+                distance = destinationDistance;
+            Vector3 nextPosition = _rb.position + new Vector3(dir.x, 0, dir.y) * distance;
+            InitializeSelfFlowField(_rb.position, nextPosition);
+            AssignCurrentFlowField(selfFlowField);
+        }
 
         // Move with Rigidbody
         Vector3 flowFieldVector = GetFlowFieldDirection(_rb.position);
-        Vector3 alignmentVector = GetAlignmentDirection(_rb.position, 1f, 3f);
-        Vector3 separationVector = GetSeparationDirection(_rb.position, 1f, 3f);
+        //Vector3 alignmentVector = GetAlignmentDirection(_rb.position, 1f, 3f);
+        //Vector3 separationVector = GetSeparationDirection(_rb.position, 1f, 3f);
 
-        Vector3 moveDir = flowFieldVector + alignmentVector + separationVector;
+
+        Vector3 moveDir = flowFieldVector;
         // rb.velocity cause other unit's transform to change slightly. Reason unknown
         // rb.velocity = moveDir.normalized * movementSpeed;
         if (moveDir == Vector3.zero) { return; }
@@ -411,37 +342,38 @@ public class MarineAction : IMarineAction
     }
 
 
-    public void InitializeMoveTowards(Vector3 _moveMousePosition, FlowField _flowField)
-    {
-        moveMousePosition = _moveMousePosition;
-        curFlowField = _flowField;
-        curFlowField.CreateIntegrationField(curFlowField.GetCellFromWorldPos(_moveMousePosition));
-        curFlowField.CreateFlowField();
-    }
-    public void InitializePatrol(Vector3 _moveMousePosition, Vector3 _curPosition, FlowField _flowField)
+    public void InitializeMoveTowards(Vector3 _curPosition, Vector3 _moveMousePosition)
     {
         InitializeSelfFlowField(_curPosition, _moveMousePosition);
 
-        curFlowField = _flowField;
-        curFlowField.CreateIntegrationField(curFlowField.GetCellFromWorldPos(_moveMousePosition));
-        curFlowField.CreateFlowField();
-        curFlowFieldIndex = 0;
+        moveMousePosition = _moveMousePosition;
+
+        AssignCurrentFlowField(selfFlowField);
+
+        //GridDebug.SetCurFlowField(curFlowField);
+        //GridDebug.DrawFlowField();
     }
-    public void InitializeAttackTarget(IEntity _target, FlowField _flowField)
+    public void InitializePatrol(Vector3 _curPosition, Vector3[] _moveWaypoints)
+    {
+        InitializeSelfFlowField(_curPosition, _moveWaypoints[0]);
+
+        moveMousePosition = _moveWaypoints[0];
+
+        AssignCurrentFlowField(selfFlowField);
+
+        curWaypointIndex = 0;
+    }
+    public void InitializeAttackTarget(IEntity _target)
     {
         curTarget = _target;
 
-        curFlowField = _flowField;
     }
-    public void InitializeAttackMove(Vector3 _curPosition, Vector3 _attackMovePosition, FlowField _flowField)
+    public void InitializeAttackMove(Vector3 _curPosition, Vector3 _attackMovePosition)
     {
         attackMousePosition = _attackMovePosition;
 
         InitializeSelfFlowField(_curPosition, _attackMovePosition);
 
-        curFlowField = _flowField;
-        curFlowField.CreateIntegrationField(curFlowField.GetCellFromWorldPos(_attackMovePosition));
-        curFlowField.CreateFlowField();
     }
     public void InitializeSelfFlowField(Vector3 _curPosition, Vector3 _destinationPosition)
     {
@@ -467,6 +399,10 @@ public class MarineAction : IMarineAction
     public void AssignMoveMousePosition(Vector3 _vector)
     {
         moveMousePosition = _vector;
+    }
+    public void AssignWaypointPosition(Vector3[] _vectors)
+    {
+        moveWaypoints = _vectors;
     }
     public void AssignTarget(IEntity _target)
     {

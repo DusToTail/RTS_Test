@@ -32,15 +32,15 @@ public class CommandSystem
             for(int index = 0; index < _group.entityList.Count; index++)
             {
                 dynamic newAction = _group.entityList[index].ReturnNewAction();
-                newAction.InitializeType(2);
+                newAction.InitializeType(Tags.AttackTargetInt);
                 newAction.InitializeGroup(_group);
-                newAction.InitializeAttackTarget(_target, _group.groupFlowField);
+                newAction.InitializeAttackTarget(_target);
 
                 _group.actionList.Add(newAction);
 
                 _group.entityList[index].GetActionController().EnqueueAction(newAction, _isInstant);
             }
-            _group.AssignGroupTarget(_target);
+            //_group.AssignGroupTarget(_target);
             _group.StartUpdateGroup(true);
         }
         else
@@ -58,28 +58,21 @@ public class CommandSystem
         // Determine to Queue command OR Overwrite past commands by holding SHIFT or not
 
         // Check if the clicked position is traversible
-        if (_group.groupFlowField.GetCellFromWorldPos(_destination).cost < byte.MaxValue)
+        Debug.Log($"Attack Move Towards: {_destination}");
+
+        for (int index = 0; index < _group.entityList.Count; index++)
         {
-            Debug.Log($"Attack Move Towards: {_destination}");
+            dynamic newAction = _group.entityList[index].ReturnNewAction();
+            newAction.InitializeType(3);
+            newAction.InitializeGroup(_group);
+            newAction.InitializeAttackMove(_group.entityList[index].GetWorldPosition(), _destination);
 
-            for (int index = 0; index < _group.entityList.Count; index++)
-            {
-                dynamic newAction = _group.entityList[index].ReturnNewAction();
-                newAction.InitializeType(3);
-                newAction.InitializeGroup(_group);
-                newAction.InitializeAttackMove(_destination, _group.groupFlowField);
+            _group.actionList.Add(newAction);
 
-                _group.actionList.Add(newAction);
-
-                _group.entityList[index].GetActionController().EnqueueAction(newAction, _isInstant);
-            }
-
-            _group.StartUpdateGroup(true);
+            _group.entityList[index].GetActionController().EnqueueAction(newAction, _isInstant);
         }
-        else
-        {
-            Debug.Log("Cant Attack There!");
-        }
+
+        _group.StartUpdateGroup(true);
     }
 
     
@@ -87,17 +80,17 @@ public class CommandSystem
     public static void PatrolCommand(Vector3 _moveMousePosition, SelectGroup _group, bool _isInstant)
     {
         if(_group == null) { return; }
-
-        if (_group.groupFlowField.GetCellFromWorldPos(_moveMousePosition).cost < byte.MaxValue)
+        Collider[] colliders = Physics.OverlapBox(_moveMousePosition, Vector3.one + Vector3.up * 1000, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Impassible_Terrain), QueryTriggerInteraction.Ignore);
+        if (colliders.Length == 0)
         {
             Debug.Log($"Simple Patrol Towards {_moveMousePosition}");
 
             for (int index = 0; index < _group.entityList.Count; index++)
             {
                 dynamic newAction = _group.entityList[index].ReturnNewAction();
-                newAction.InitializeType(1);
+                newAction.InitializeType(Tags.PatrolInt);
                 newAction.InitializeGroup(_group);
-                newAction.InitializePatrol(_moveMousePosition, _group.entityList[index].GetWorldPosition(), _group.groupFlowField);
+                newAction.InitializePatrol(_group.entityList[index].GetWorldPosition(), _moveMousePosition, _group.entityList[index].GetWorldPosition());
 
                 _group.actionList.Add(newAction);
 
@@ -117,11 +110,14 @@ public class CommandSystem
                 {
                     Vector3 dir = entity.GetWorldPosition() - _group.entityList[index].GetWorldPosition();
                     Vector3 offset = new Vector3(-dir.x, 0, -dir.z).normalized * entity.GetSelectedCircleRadius();
+                    Vector3[] moveWaypoints = new Vector3[2];
+                    moveWaypoints[0] = _moveMousePosition + offset;
+                    moveWaypoints[1] = _group.entityList[index].GetWorldPosition();
 
                     dynamic newAction = _group.entityList[index].ReturnNewAction();
-                    newAction.InitializeType(1);
+                    newAction.InitializeType(Tags.PatrolInt);
                     newAction.InitializeGroup(_group);
-                    newAction.InitializePatrol(_moveMousePosition + offset, _group.entityList[index].GetWorldPosition(), _group.groupFlowField);
+                    newAction.InitializePatrol(_group.entityList[index].GetWorldPosition(), moveWaypoints);
 
                     _group.actionList.Add(newAction);
                     _group.entityList[index].GetActionController().EnqueueAction(newAction, _isInstant);
@@ -145,7 +141,8 @@ public class CommandSystem
         if (_group == null) { return; }
 
         // Check if the clicked position is traversible
-        if (_group.groupFlowField.GetCellFromWorldPos(_destinationPosition).cost < byte.MaxValue)
+        Collider[] colliders = Physics.OverlapBox(_destinationPosition, Vector3.one + Vector3.up * 1000, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Impassible_Terrain), QueryTriggerInteraction.Ignore);
+        if (colliders.Length == 0)
         {
             Debug.Log($"Move Towards {_destinationPosition}");
 
@@ -154,9 +151,9 @@ public class CommandSystem
                 if (_group.entityList[index] == null) { continue; }
 
                 dynamic newAction = _group.entityList[index].ReturnNewAction();
-                newAction.InitializeType(0);
+                newAction.InitializeType(Tags.MoveTowardsInt);
                 newAction.InitializeGroup(_group);
-                newAction.InitializeMoveTowards(_destinationPosition, _group.groupFlowField);
+                newAction.InitializeMoveTowards(_group.entityList[index].GetWorldPosition(), _destinationPosition);
                 _group.actionList.Add(newAction);
                 _group.entityList[index].GetActionController().EnqueueAction(newAction, _isInstant);
             }
@@ -177,9 +174,9 @@ public class CommandSystem
                     Vector3 offset = new Vector3(-dir.x, 0, -dir.z).normalized * entity.GetSelectedCircleRadius();
 
                     dynamic newAction = _group.entityList[index].ReturnNewAction();
-                    newAction.InitializeType(0);
+                    newAction.InitializeType(Tags.MoveTowardsInt);
                     newAction.InitializeGroup(_group);
-                    newAction.InitializeMoveTowards(_destinationPosition + offset, _group.groupFlowField);
+                    newAction.InitializeMoveTowards(_group.entityList[index].GetWorldPosition(), _destinationPosition + offset);
 
                     _group.actionList.Add(newAction);
                     _group.entityList[index].GetActionController().EnqueueAction(newAction, _isInstant);

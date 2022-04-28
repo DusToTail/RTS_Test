@@ -41,16 +41,16 @@ public class GridDebug : MonoBehaviour
     {
         if(displayGrid)
         {
-            if(curFlowField == null)
-            {
-                DrawGrid(gridController.gridSize, Color.yellow, gridController.cellRadius);
-                Debug.Log("GridDebugging null");
-            }
-            else
-            {
-                DrawGrid(curFlowField.gridSize, Color.green, curFlowField.cellRadius);
-                Debug.Log("GridDebugging curFlowField");
-            }
+            //if(curFlowField == null)
+            //{
+            //    DrawGrid(gridController.gridSize, Color.yellow, gridController.cellRadius);
+            //    //Debug.Log("GridDebugging null");
+            //}
+            //else
+            //{
+            //    DrawGrid(curFlowField.gridSize, Color.green, curFlowField.cellRadius);
+            //    //Debug.Log("GridDebugging curFlowField");
+            //}
 
             if (curFlowField == null) { return; }
 
@@ -80,7 +80,7 @@ public class GridDebug : MonoBehaviour
     }
     # endif
 
-    private void DrawGrid(Vector2Int drawGridSize, Color drawColor, float drawCellRadius)
+    public void DrawGrid(Vector2Int drawGridSize, Color drawColor, float drawCellRadius)
     {
         //ClearChild();
         Gizmos.color = drawColor;

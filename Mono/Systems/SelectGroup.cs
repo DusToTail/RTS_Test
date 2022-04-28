@@ -12,7 +12,7 @@ public class SelectGroup : MonoBehaviour
     /// 
     //public List<FlowField> flowFieldList;
     //public FlowField groupFlowField;
-    public IEntity groupTarget;
+    //public IEntity groupTarget;
 
     public List<IAction> actionList;
 
@@ -132,10 +132,10 @@ public class SelectGroup : MonoBehaviour
     //    flowFieldList.Add(_flowField);
     //}
 
-    public void AssignGroupTarget(IEntity _target)
-    {
-        groupTarget = _target;
-    }
+    //public void AssignGroupTarget(IEntity _target)
+    //{
+    //    groupTarget = _target;
+    //}
     /// <summary>
     /// Returns false if AT LEAST ONE Action is not finished. If not, true
     /// </summary>
@@ -252,7 +252,7 @@ public class SelectGroup : MonoBehaviour
 
         //flowFieldReset = true;
 
-        groupTarget = null;
+        //groupTarget = null;
         groupUpdate = false;
         Debug.Log($"{this.gameObject.name} is Reset");
     }

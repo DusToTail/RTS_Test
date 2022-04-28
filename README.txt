@@ -10,6 +10,3 @@ These systems include:
 + AI System
 + Multiplayer System
 etc
-
-Current potential issues: performance
-Potential solution: C# Job System, Async programming

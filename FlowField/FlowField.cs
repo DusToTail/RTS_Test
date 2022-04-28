@@ -140,7 +140,9 @@ public class FlowField
                 if(curNeighbor.bestCost < bestCost)
                 {
                     bestCost = curNeighbor.bestCost;
-                    curCell.bestDirection = GridDirection.GetDirectionFromV2I(curNeighbor.gridPosition - curCell.gridPosition);
+                    Vector3 dirV3 = (curNeighbor.worldPosition - curCell.worldPosition) / cellDiameter;
+                    Vector2Int dir = new Vector2Int(Mathf.FloorToInt(dirV3.x), Mathf.FloorToInt(dirV3.z));
+                    curCell.bestDirection = GridDirection.GetDirectionFromV2I(dir);
                 }
             }
         }

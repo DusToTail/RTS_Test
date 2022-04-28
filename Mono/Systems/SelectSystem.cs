@@ -14,11 +14,11 @@ public class SelectSystem : MonoBehaviour
     /// 
     /// Works with Canvas-related components,
     /// </summary>
-    public List<IUnit> unitList { get; private set; }
-    public List<IStructure> structureList { get; private set; }
-    public List<IEntity> selectableList { get; private set; }
-    public List<SelectGroup> selectGroupList { get; private set; }
-    public SelectGroup curSelectGroup { get; private set; }
+    public List<IUnit> unitList { get; set; }
+    public List<IStructure> structureList { get; set; }
+    public List<IEntity> selectableList { get; set; }
+    public List<SelectGroup> selectGroupList { get; set; }
+    public SelectGroup curSelectGroup { get; set; }
     
     public enum InputMode
     {
@@ -280,7 +280,7 @@ public class SelectSystem : MonoBehaviour
 
 
     // Add units detected by Physics.OverlapBox() at the center position of click and release, with offset towards the ground.
-    private void AddSelectablesToList()
+    public void AddSelectablesToList()
     {
         Vector3 point1 = leftClickMouseWorldPosition_Click;
         Vector3 point2 = leftClickMouseWorldPosition_Release;
@@ -353,7 +353,7 @@ public class SelectSystem : MonoBehaviour
         
     }
 
-    private void AddToSelectGroupList(int _groupIndex)
+    public void AddToSelectGroupList(int _groupIndex)
     {
         if(transform.Find($"Static SelectGroup No.{_groupIndex}") == null)
         {
@@ -389,7 +389,8 @@ public class SelectSystem : MonoBehaviour
 
         Debug.Log($"Added Static SelectGroup No.{_groupIndex}");
     }
-    private void AssignCurrentSelectGroup(int _groupIndex)
+
+    public void AssignCurrentSelectGroup(int _groupIndex)
     {
         if(_groupIndex > selectGroupList.Count - 1) { return; }
         if(selectGroupList[_groupIndex] == null) { Debug.Log($"Static SelectGroup No.{_groupIndex} is NULL"); return; }
@@ -412,7 +413,27 @@ public class SelectSystem : MonoBehaviour
         Debug.Log($"Assign Current SelectGroup to SelectGroup No.{_groupIndex}");
     }
 
-    private void ClearLists()
+    // Render Selected Circles of All Selectables
+    public void RenderSelectedCircles(bool isOn)
+    {
+        if (unitList.Count > 0)
+        {
+            foreach (IUnit curUnit in unitList)
+            {
+                curUnit.RenderSelectedCircle(isOn);
+            }
+        }
+
+        if (structureList.Count > 0)
+        {
+            foreach (IStructure curStructure in structureList)
+            {
+                curStructure.RenderSelectedCircle(isOn);
+            }
+        }
+    }
+
+    public void ClearLists()
     {
         unitList.Clear();
         unitList.TrimExcess();
@@ -461,25 +482,7 @@ public class SelectSystem : MonoBehaviour
         selectFieldBox.SetPositions(vertexArray);
     }
 
-    // Render Selected Circles of All Selectables
-    private void RenderSelectedCircles(bool isOn)
-    {
-        if (unitList.Count > 0)
-        {
-            foreach (IUnit curUnit in unitList)
-            {
-                curUnit.RenderSelectedCircle(isOn);
-            }
-        }
-
-        if (structureList.Count > 0)
-        {
-            foreach (IStructure curStructure in structureList)
-            {
-                curStructure.RenderSelectedCircle(isOn);
-            }
-        }
-    }
+    
 
     private void ResetClickReleasePosition()
     {
