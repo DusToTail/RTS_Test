@@ -2,6 +2,7 @@ using UnityEngine;
 
 public class Tags
 {
+    public static string Ground = "Ground";
     public static string Impassible_Terrain = "Impassible";
     public static string Rough_Terrain = "RoughTerrain";
 

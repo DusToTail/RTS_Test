@@ -12,4 +12,4 @@ These systems include:
 etc
 
 Current potential issues: performance
-Potential solution: C# Job System
+Potential solution: C# Job System, Async programming

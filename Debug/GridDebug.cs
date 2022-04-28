@@ -1,14 +1,16 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 
 public class GridDebug : MonoBehaviour
 {
     [SerializeField]
-    private bool displayGrid;
-    [SerializeField]
     private GridController gridController;
+    [SerializeField]
+    private bool displayGrid;
 
     enum FlowFieldDisplayType {None, FlowField, CostField, IntegrationField };
     [SerializeField]
@@ -22,6 +24,12 @@ public class GridDebug : MonoBehaviour
 
     private static GridDebug instance;
 
+    public static void SetCurFlowField(FlowField flowField)
+    {
+        curFlowField = flowField;
+    }
+
+    #if UNITY_EDITOR
     private void Start()
     {
         if (instance == null)
@@ -29,23 +37,22 @@ public class GridDebug : MonoBehaviour
         else
             Destroy(this.gameObject);
     }
-
-    public static void SetCurFlowField(FlowField flowField)
-    {
-        curFlowField = flowField;
-    }
-
     private void OnDrawGizmos()
     {
-        if(Application.isPlaying == false) { return; }
         if(displayGrid)
         {
             if(curFlowField == null)
+            {
                 DrawGrid(gridController.gridSize, Color.yellow, gridController.cellRadius);
+                Debug.Log("GridDebugging null");
+            }
             else
+            {
                 DrawGrid(curFlowField.gridSize, Color.green, curFlowField.cellRadius);
+                Debug.Log("GridDebugging curFlowField");
+            }
 
-            if(curFlowField == null) { return; }
+            if (curFlowField == null) { return; }
 
             GUIStyle style = new GUIStyle(GUI.skin.label);
             style.alignment = TextAnchor.MiddleCenter;
@@ -71,10 +78,11 @@ public class GridDebug : MonoBehaviour
             }
         }
     }
+    # endif
 
     private void DrawGrid(Vector2Int drawGridSize, Color drawColor, float drawCellRadius)
     {
-        ClearChild();
+        //ClearChild();
         Gizmos.color = drawColor;
         for(int x = 0; x < drawGridSize.x; x++)
         {
@@ -89,9 +97,9 @@ public class GridDebug : MonoBehaviour
 
     public static void DrawFlowField()
     {
-        ClearChild();
+        //ClearChild();
 
-       foreach(Cell cell in curFlowField.grid)
+        foreach(Cell cell in curFlowField.grid)
         {
             DrawIcon(cell);
         }

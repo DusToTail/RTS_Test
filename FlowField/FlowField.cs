@@ -14,7 +14,8 @@ public class FlowField
     public Vector2Int gridSize { get; private set; }
     public float cellRadius { get; private set; }
     public Cell destinationCell;
-
+    public Vector3 startPosition;
+    public Vector2 moveDirection;
 
     private float cellDiameter;
     private Vector3 cellHalfExtents;
@@ -25,12 +26,15 @@ public class FlowField
     /// </summary>
     /// <param name="_cellRadius"></param>
     /// <param name="_gridSize"></param>
-    public FlowField(float _cellRadius, Vector2Int _gridSize)
+    public FlowField(Vector3 _curPosition, Vector2 _moveDir, float _cellRadius, Vector2Int _gridSize)
     {
         cellRadius = _cellRadius;
         cellDiameter = cellRadius * 2f;
         cellHalfExtents = Vector3.one * cellRadius;
         gridSize = _gridSize;
+
+        startPosition = _curPosition;
+        moveDirection = _moveDir.normalized;
     }
 
     /// <summary>
@@ -45,7 +49,7 @@ public class FlowField
             {
                 //An offset of cellRadius is applied to both axis to provide world position right at the center of each cell
                 
-                Vector3 worldPos = new Vector3(cellDiameter * x + cellRadius, 0, cellDiameter * y + cellRadius);
+                Vector3 worldPos = new Vector3((cellDiameter * x + cellRadius) * Mathf.Sign(moveDirection.x), 0, (cellDiameter * y + cellRadius) * Mathf.Sign(moveDirection.y)) + startPosition;
                 grid[x, y] = new Cell(worldPos, new Vector2Int(x, y));
             }
         }
@@ -186,8 +190,8 @@ public class FlowField
     /// <returns></returns>
     public Cell GetCellFromWorldPos(Vector3 worldPos)
     {
-        float percentX = worldPos.x / (gridSize.x * cellDiameter);
-        float percentY = worldPos.z / (gridSize.y * cellDiameter);
+        float percentX = Mathf.Abs(worldPos.x - startPosition.x) / (gridSize.x * cellDiameter);
+        float percentY = Mathf.Abs(worldPos.z - startPosition.z) / (gridSize.y * cellDiameter);
 
         percentX = Mathf.Clamp01(percentX);
         percentY = Mathf.Clamp01(percentY);

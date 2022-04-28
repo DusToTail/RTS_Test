@@ -2,9 +2,12 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[RequireComponent(typeof(Rigidbody), typeof(Collider))]
-public class Structure : MonoBehaviour, IStructure
+public class CommandCenter : MonoBehaviour, IStructure
 {
+    public GameObject[] unitPrefabs;
+    public GameObject[] upgradePrefabs;
+    public Transform spawnPosition;
+
     // DESCRIPTION:
     [SerializeField]
     protected IEntity.SelectionType selectionType;
@@ -16,32 +19,48 @@ public class Structure : MonoBehaviour, IStructure
     [SerializeField]
     protected float setHealth;
     [SerializeField]
+    protected float setMovementSpeed;
+    [SerializeField]
     protected float setVisionRange;
     [SerializeField]
     protected float setBuildingTime;
+    [SerializeField]
+    protected float selectedCircleRadius;
+    [SerializeField]
+    protected GameObject miniMapSelf;
 
     protected float curHealth;
+    protected bool isOperational;
 
     protected GameObject selectedCircle;
 
     //Components
-    protected Rigidbody rb;
     protected Collider col;
+    protected Rigidbody rb;
 
     //Components
 
     public virtual void Awake()
     {
-        rb = gameObject.GetComponent<Rigidbody>();
         col = gameObject.GetComponent<Collider>();
+        rb = gameObject.GetComponent<Rigidbody>();
 
-        setVisionRange *= FindObjectOfType<GridController>().cellRadius * 2;
+        setVisionRange *= GameObject.FindObjectOfType<GridController>().cellRadius * 2;
 
         curHealth = setHealth;
 
         selectedCircle = transform.GetChild(0).gameObject;
+        Vector3[] vertices = new Vector3[4];
+        vertices[0] = new Vector3(-selectedCircleRadius, 0, -selectedCircleRadius);
+        vertices[1] = new Vector3(-selectedCircleRadius, 0, selectedCircleRadius);
+        vertices[2] = new Vector3(selectedCircleRadius, 0, selectedCircleRadius);
+        vertices[3] = new Vector3(selectedCircleRadius, 0, -selectedCircleRadius);
 
-        rb.velocity = Vector3.zero;
+        selectedCircle.GetComponent<LineRenderer>().SetPositions(vertices);
+        selectedCircleRadius = col.bounds.extents.magnitude;
+
+        miniMapSelf.SetActive(true);
+
         Debug.Log($"Structure {gameObject.name} Constructed");
     }
 
@@ -88,6 +107,7 @@ public class Structure : MonoBehaviour, IStructure
 
     public bool HealthIsZero() { return curHealth <= 0; }
 
+    public bool CanAttack() { return false; }
 
     public void RenderSelectedCircle(bool isOn)
     {
@@ -104,27 +124,45 @@ public class Structure : MonoBehaviour, IStructure
         if (curHealth < 0) { curHealth = 0; }
         if (curHealth > setHealth) { curHealth = setHealth; }
     }
+    public void SetCurrentAttackCooldown(float _time) { return; }
 
     public float GetSetHealth() { return setHealth; }
+    public float GetSetMovementSpeed() { return 0; }
     public float GetSetVisionRange() { return setVisionRange; }
+    public float GetSetAttackDamage() { return 0; }
+    public float GetSetAttackRange() { return 0; }
+    public float GetSetAttackCooldown() { return 0; }
     public float GetSetBuildingTime() { return setBuildingTime; }
 
     public float GetCurrentHealth() { return curHealth; }
+    public float GetCurrentAttackCooldown() { return 0; }
 
     public GameObject GetSelectedCircle() { return selectedCircle; }
 
-    public Rigidbody GetRigidbody() { return rb; }
     public Collider GetCollider() { return col; }
 
     public IEntity.EntityType GetEntityType() { return IEntity.EntityType.Structure; }
-    public Transform GetTransform() { return transform; }
+    public Transform GetTransform() { if (transform == null) return null; return transform; }
     public Vector3 GetWorldPosition()
     {
         if (rb == null) { return Vector3.zero; }
-
         return rb.position;
     }
+    public Rigidbody GetRigidbody() { if (GetComponent<Rigidbody>() != null) return GetComponent<Rigidbody>(); return null; }
+
+    public float GetSelectedCircleRadius() { return selectedCircleRadius; }
 
     public virtual dynamic GetSelf() { return this; }
+    public virtual dynamic GetActionController() 
+    { 
+        if(GetComponent<StructureActionController>() == null)
+            return null;
+        return GetComponent<StructureActionController>(); 
+    }
+    
+
+    public virtual dynamic ReturnSelfType() { return typeof(CommandCenter); }
+    public virtual dynamic ReturnNewAction() { return new CommandCenterAction(); }
+    public virtual dynamic ReturnActionType() { return typeof(CommandCenterAction); }
 
 }

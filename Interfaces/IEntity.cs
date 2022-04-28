@@ -25,6 +25,7 @@ public interface IEntity
     public SelectionType GetSelectionType();
     public RelationshipType GetRelationshipType();
     public Sprite GetPortrait();
+    public float GetSelectedCircleRadius();
 
     public EntityType GetEntityType();
 
@@ -32,5 +33,9 @@ public interface IEntity
     public Vector3 GetWorldPosition();
 
     public dynamic GetSelf();
+    public dynamic GetActionController();
+    public dynamic ReturnSelfType();
+    public dynamic ReturnNewAction();
+    public dynamic ReturnActionType();
 
 }
