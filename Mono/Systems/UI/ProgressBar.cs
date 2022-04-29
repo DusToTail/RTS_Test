@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// English: Visualize the changes in progress in the slider component used.
+/// 日本語：進捗の変化をＳｌｉｄｅｒコンポーネントで表す。
+/// </summary>
 public class ProgressBar : MonoBehaviour
 {
     public Slider slider;

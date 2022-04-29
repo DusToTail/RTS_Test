@@ -2,12 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// DESCRIPTION: A cell is a basic unit in a flowfield structure, containing position, traversing cost, 
+/// best cost to travel to a destination and the consequent best direction
+/// </summary>
 public class Cell
 {
-    /// <summary>
-    /// DESCRIPTION: A cell is a basic unit in a flowfield structure, containing position, traversing cost, 
-    /// best cost to travel to a destination and the consequent best direction
-    /// </summary>
+    
     
     public Vector3 worldPosition;
     public Vector2Int gridPosition;

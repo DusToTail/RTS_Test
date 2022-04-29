@@ -2,6 +2,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// English: A class that has different types of actions that a Marine can take and those actions implementations.
+/// 日本語：マリーンの行動の種類とそれらの実装を持つクラス。
+/// </summary>
 public class MarineAction : IMarineAction
 {
     
@@ -32,8 +36,11 @@ public class MarineAction : IMarineAction
     public FlowField selfFlowField { get; set; }
     public int curWaypointIndex { get; set; }
 
-    
 
+    /// <summary>
+    /// Default Constructor. When used, need separate initialization for each type of Action.
+    /// 日本語：デフォルトコンストラクタ. 使用するとき、行動の種類によって個別の初期化が必要。
+    /// </summary>
     public MarineAction()
     {
         Debug.Log("Marine Action Created");
@@ -49,15 +56,14 @@ public class MarineAction : IMarineAction
         group = null;
     }
 
-
     public void AttackMove(Rigidbody _rb, float _movementSpeed, float _attackDamage, float _attackRange, float _visionRange, bool _canAttack)
     {
-        float destinationDistance = (_rb.position - attackMousePosition).magnitude;
-
         // Goal Check and Excution of other simpler action
         // 1st situation: if the destination is reached and there is no enemy nearby
         // 2nd situation: if there is enemy nearby
         // 3rd situation: if there is no target
+
+        float destinationDistance = (_rb.position - attackMousePosition).magnitude;
         IEntity closestEnemy = ReturnNearbyEnemy(_rb, _visionRange);
         if (destinationDistance < 1 && closestEnemy == null)
         {
@@ -85,6 +91,7 @@ public class MarineAction : IMarineAction
 
     public void AttackTarget(Rigidbody _rb, float _movementSpeed, float _attackDamage, float _attackRange, float _visionRange, bool _canAttack)
     {
+        // Check for target's validity and stop action if unvalid
         if (curTarget == null)
         {
             Debug.Log("Action is finished");
@@ -110,7 +117,7 @@ public class MarineAction : IMarineAction
             return;
         }
 
-        // Move if outside range and return (no attacking)
+        // Move towards the target if outside range and return (no attacking)
         float distance = (curTarget.GetWorldPosition() - _rb.position).magnitude - curTarget.GetSelectedCircleRadius();
         if (distance > (float)_attackRange)
         {
@@ -124,7 +131,7 @@ public class MarineAction : IMarineAction
             return;
         }
 
-
+        // Attack target if possible (there is cooldown being updated in Marine class, and reset to 0 here when attack)
         if (curTarget is IUnit curTargetUnit)
         {
             if (curTarget == null || curTargetUnit.HealthIsZero())
@@ -195,8 +202,9 @@ public class MarineAction : IMarineAction
 
     public void Patrol(Rigidbody _rb, float _speed)
     {
-        // Goal Check
+        // Check if the entity has reached the destination to update current waypoint
         float cellDistance = (curFlowField.GetCellFromWorldPos(_rb.position).gridPosition - curFlowField.destinationCell.gridPosition).magnitude;
+        
         if (cellDistance < 1)
         {
             if(curWaypointIndex > moveWaypoints.Length - 1)
@@ -215,10 +223,10 @@ public class MarineAction : IMarineAction
 
     public void MoveTowards(Rigidbody _rb, float _speed)
     {
+        // Check if the entity has reached the destination or has reached the temporary position to update self flowfield
         float destinationDistance = new Vector3(_rb.position.x - moveMousePosition.x, 0, _rb.position.z - moveMousePosition.z).magnitude;
-        Debug.Log(destinationDistance);
         float cellDistance = (curFlowField.GetCellFromWorldPos(_rb.position).gridPosition - curFlowField.destinationCell.gridPosition).magnitude;
-        // Goal Check
+
         if (destinationDistance < 1)
         {
             Debug.Log("Action is finished");
@@ -253,6 +261,21 @@ public class MarineAction : IMarineAction
         _rb.MoveRotation(Quaternion.LookRotation(moveDir.normalized));
     }
 
+    public Vector3 GetFlowFieldDirection(Vector3 _curWorldPos)
+    {
+        // Validity Check
+        if (curFlowField == null) { return Vector3.zero; }
+        if (isFinished == true) { return Vector3.zero; }
+
+        if (curFlowField.GetCellFromWorldPos(_curWorldPos) == curFlowField.destinationCell) { return Vector3.zero; }
+        //Debug.Log(curFlowField.GetCellFromWorldPos(_curWorldPos).bestDirection.Vector);
+        // Calculate direction from flowfield
+        int x = curFlowField.GetCellFromWorldPos(_curWorldPos).bestDirection.Vector.x;
+        int z = curFlowField.GetCellFromWorldPos(_curWorldPos).bestDirection.Vector.y;
+        Vector3 flowFieldDir = new Vector3(x, 0, z);
+        //Debug.Log(flowFieldDir);
+        return flowFieldDir.normalized;
+    }
 
     public Vector3 GetAlignmentDirection(Vector3 _curWorldPos, float _minDistance, float _maxDistance)
     {
@@ -282,21 +305,7 @@ public class MarineAction : IMarineAction
         //Debug.Log(alignmentDir);
         return alignmentDir.normalized;
     }
-    public Vector3 GetFlowFieldDirection(Vector3 _curWorldPos)
-    {
-        // Validity Check
-        if (curFlowField == null) { return Vector3.zero; }
-        if (isFinished == true) { return Vector3.zero; }
 
-        if (curFlowField.GetCellFromWorldPos(_curWorldPos) == curFlowField.destinationCell) { return Vector3.zero; }
-        //Debug.Log(curFlowField.GetCellFromWorldPos(_curWorldPos).bestDirection.Vector);
-        // Calculate direction from flowfield
-        int x = curFlowField.GetCellFromWorldPos(_curWorldPos).bestDirection.Vector.x;
-        int z = curFlowField.GetCellFromWorldPos(_curWorldPos).bestDirection.Vector.y;
-        Vector3 flowFieldDir = new Vector3(x, 0, z);
-        //Debug.Log(flowFieldDir);
-        return flowFieldDir.normalized;
-    }
     public Vector3 GetSeparationDirection(Vector3 _curWorldPos, float _minDistance, float _maxDistance)
     {
         // Validity Check
@@ -332,16 +341,24 @@ public class MarineAction : IMarineAction
         if (_rb == null) { return; }
         _rb.velocity = Vector3.zero;
     }
+
     public void Cancel()
     {
         Stop();
     }
+
     public void Stop()
     {
         isFinished = true;
     }
 
 
+    /// <summary>
+    /// English: Initialize all necessary variables for Move Action
+    /// 日本語：移動する行動の必要な変数を初期化する。
+    /// </summary>
+    /// <param name="_curPosition"></param>
+    /// <param name="_moveMousePosition"></param>
     public void InitializeMoveTowards(Vector3 _curPosition, Vector3 _moveMousePosition)
     {
         InitializeSelfFlowField(_curPosition, _moveMousePosition);
@@ -353,6 +370,13 @@ public class MarineAction : IMarineAction
         //GridDebug.SetCurFlowField(curFlowField);
         //GridDebug.DrawFlowField();
     }
+
+    /// <summary>
+    /// English: Initialize all necessary variables for Patrol Action
+    /// 日本語：パトロールする行動の必要な変数を初期化する。
+    /// </summary>
+    /// <param name="_curPosition"></param>
+    /// <param name="_moveWaypoints"></param>
     public void InitializePatrol(Vector3 _curPosition, Vector3[] _moveWaypoints)
     {
         InitializeSelfFlowField(_curPosition, _moveWaypoints[0]);
@@ -363,11 +387,24 @@ public class MarineAction : IMarineAction
 
         curWaypointIndex = 0;
     }
+
+    /// <summary>
+    /// English: Initialize all necessary variables for Attack Target Action
+    /// 日本語：ターゲットを追及しながら攻撃する行動の必要な変数を初期化する。
+    /// </summary>
+    /// <param name="_target"></param>
     public void InitializeAttackTarget(IEntity _target)
     {
         curTarget = _target;
 
     }
+
+    /// <summary>
+    /// English: Initialize all necessary variables for Attack Move Action
+    /// 日本語：指定した場所へ移動しながら周りの敵を攻撃する行動の必要な変数を初期化する。
+    /// </summary>
+    /// <param name="_curPosition"></param>
+    /// <param name="_attackMovePosition"></param>
     public void InitializeAttackMove(Vector3 _curPosition, Vector3 _attackMovePosition)
     {
         attackMousePosition = _attackMovePosition;
@@ -375,6 +412,13 @@ public class MarineAction : IMarineAction
         InitializeSelfFlowField(_curPosition, _attackMovePosition);
 
     }
+
+    /// <summary>
+    /// English: Creating a NEW self flowfield) with current position and the destination position in consideration
+    /// 日本語：現在の位置と目的地で新しい独自のFlowFieldを作成する。
+    /// </summary>
+    /// <param name="_curPosition"></param>
+    /// <param name="_destinationPosition"></param>
     public void InitializeSelfFlowField(Vector3 _curPosition, Vector3 _destinationPosition)
     {
         Vector2 dir = new Vector2(_destinationPosition.x - _curPosition.x, _destinationPosition.z - _curPosition.z);
@@ -385,29 +429,46 @@ public class MarineAction : IMarineAction
         selfFlowField.CreateFlowField();
     }
 
+    /// <summary>
+    /// English: Initialize (Assign) the type of the Action
+    /// 日本語：行動のタイプを初期化（割り当てる）。
+    /// </summary>
+    /// <param name="_type"></param>
     public void InitializeType(int _type) { type = (Type)_type; }
+
+    /// <summary>
+    /// English: Initialize (Assign) the group that the action (also the entity) is in
+    /// 日本語：所属しているグループを初期化（割り当てる）。
+    /// </summary>
+    /// <param name="_group"></param>
     public void InitializeGroup(SelectGroup _group) { group = _group; }
+
 
     public void AssignCurrentFlowField(FlowField _flowField)
     {
         curFlowField = _flowField;
     }
+    
     public void AssignSelfFlowField(FlowField _flowField)
     {
         selfFlowField = _flowField;
     }
+
     public void AssignMoveMousePosition(Vector3 _vector)
     {
         moveMousePosition = _vector;
     }
+
     public void AssignWaypointPosition(Vector3[] _vectors)
     {
         moveWaypoints = _vectors;
     }
+
     public void AssignTarget(IEntity _target)
     {
         curTarget = _target;
     }
+
     public void AssignSubActions(List<IAction> _actions)
     {
         if (_actions == null) { return; }

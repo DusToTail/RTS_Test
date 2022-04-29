@@ -3,23 +3,25 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// English: A class that controls most of player's input (mouse and keyboard) regarding selecting and controlling (with CommandSystem class) and 
+/// manages different groups of entities selected and/or saved for future uses by the player. Additionally, it also renders the select field (box)
+/// cursors and entities' selected circles to help visualize the effect of player's inputs.
+/// 日本語：Entityを選ぶとコマンドする（CommandSystemクラスの関数で）ことに関するプレイヤーのインプット（マウスとキーボード）を管理するクラス。
+/// このクラスはプレイヤーによって作成されたり保存されたりする複数のEntityグループを管理する。その他、インプットするたびに、グリーンボックス、マウス、
+/// Entityにある選ばれた時に表示する円も操作する。
+/// </summary>
 public class SelectSystem : MonoBehaviour
 {
-    /// <summary>
-    /// DESCRIPTION: A system that allows user to select and/or command entities via clicking and dragging mouse
-    /// Contains the following features:
-    /// 1. Select units
-    /// 2. Command units
-    /// 3. UI interface (select field and cursor display)
-    /// 
-    /// Works with Canvas-related components,
-    /// </summary>
-    public List<IUnit> unitList { get; set; }
-    public List<IStructure> structureList { get; set; }
-    public List<IEntity> selectableList { get; set; }
-    public List<SelectGroup> selectGroupList { get; set; }
-    public SelectGroup curSelectGroup { get; set; }
+    // Current selectable entities inside the currently selected group
+    public List<IEntity> selectableList { get; set; } // ALL
+    public List<IUnit> unitList { get; set; } // Only Unit
+    public List<IStructure> structureList { get; set; } // Only Structure
+
+    public List<SelectGroup> selectGroupList { get; set; } // List of select group saved by the player
+    public SelectGroup curSelectGroup { get; set; } // currently selected group's SelectGroup class
     
+    // Input mode when using keyboard (and also when clicking buttons on the UI Command Panel) 
     public enum InputMode
     {
         MoveButton,
@@ -29,28 +31,29 @@ public class SelectSystem : MonoBehaviour
     }
     public InputMode inputMode { get; private set; }
 
+    // Mouse left-right click-release position in World Space
+    // ※ NOTE: the game is set on xz plane, thus y-axis would indicate height.
+    public Vector3 leftClickMouseWorldPosition_Click { get; private set; }
+    public Vector3 leftClickMouseWorldPosition_Release { get; private set; }
+    public Vector3 rightClickMouseWorldPosition_Click { get; private set; }
+    public Vector3 rightClickMouseWorldPosition_Release { get; private set; }
+
     // UI reference
     [SerializeField]
-    private RectTransform cursorPosition; // In Screen Space, in pixels
+    private RectTransform cursorPosition; // In screen space
     [SerializeField]
-    private LineRenderer selectFieldBox; // An object under Canvas, with 4 vertices (coord in pixels) to create a box for select field
+    private LineRenderer selectFieldBox; // In screen space, render with 4 vertices to form a box
     [SerializeField]
-    private float selectFieldWidth; // width of the select field lines
+    private float selectFieldWidth; // Width of the lines in select field box
 
     [SerializeField]
-    private bool displayGizmos;
+    private bool displayGizmos; // For debugging purpose
 
-    // Mouse click-release position in World Space
-    // ※Note: the game is set on xz plane, thus y-axis would indicate height.
-    public Vector3 leftClickMouseWorldPosition_Click { get; private set; }
-    public Vector3 leftClickMouseWorldPosition_Release {get; private set;}
-    public Vector3 rightClickMouseWorldPosition_Click {get; private set;}
-    public Vector3 rightClickMouseWorldPosition_Release {get; private set;}
-
+    
     
     private void Awake()
     {
-        //Initialization
+        // Initialization
         unitList = new List<IUnit>();
         structureList = new List<IStructure>();
         selectableList = new List<IEntity>();
@@ -71,24 +74,27 @@ public class SelectSystem : MonoBehaviour
 
     private void Update()
     {
-        //Move an image in replacement of the default cursor on the screen
+        // Move an image in replacement of the default cursor on the screen
         UpdateCursorTransform();
 
-        // INPUT MODE
-        if(Input.GetKeyDown(KeyCode.A))
+        // ******* INPUT MODE *******
         {
-            inputMode = InputMode.AttackButton;
+            if (Input.GetKeyDown(KeyCode.A))
+            {
+                inputMode = InputMode.AttackButton;
+            }
+            else if (Input.GetKeyDown(KeyCode.M))
+            {
+                inputMode = InputMode.MoveButton;
+            }
+            else if (Input.GetKeyDown(KeyCode.P))
+            {
+                inputMode = InputMode.PatrolButton;
+            }
         }
-        else if(Input.GetKeyDown(KeyCode.M))
-        {
-            inputMode = InputMode.MoveButton; 
-        }
-        else if(Input.GetKeyDown(KeyCode.P))
-        {
-            inputMode = InputMode.PatrolButton;
-        }
+        
 
-        // SELECT GROUP INDEXING
+        // ******* SELECT GROUP INDEXING・SAVING ******
         {
             if (Input.GetKeyDown(KeyCode.Alpha1))
             {
@@ -153,133 +159,156 @@ public class SelectSystem : MonoBehaviour
         }
 
 
-        // MOUSE INPUT
+        // ******* MOUSE INPUT *******
         // LEFT CLICK DOWN
-        if (Input.GetMouseButtonDown(0))
         {
-            // Calculate and initially synchronize both left click and release position
-            leftClickMouseWorldPosition_Click = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            leftClickMouseWorldPosition_Release = leftClickMouseWorldPosition_Click;
-            RaycastHit hit;
-            Physics.Raycast(leftClickMouseWorldPosition_Click, Camera.main.transform.forward, out hit, 1000, LayerMask.GetMask(Tags.Ground));
-
-            if (curSelectGroup.entityList.Count > 0)
+            if (Input.GetMouseButtonDown(0))
             {
-                if (inputMode == InputMode.AttackButton)
-                {
-                    curSelectGroup.ResetSelectGroup();
-                    bool isQueued = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-                    CommandSystem.AttackCommand(hit.point, curSelectGroup, !isQueued);
-                }
-                else if (inputMode == InputMode.MoveButton)
-                {
-                    curSelectGroup.ResetSelectGroup();
-                    bool isQueued = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-                    CommandSystem.MoveCommand(hit.point, curSelectGroup, !isQueued);
-                }
-                else if (inputMode == InputMode.PatrolButton)
-                {
-                    curSelectGroup.ResetSelectGroup();
-                    bool isQueued = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-                    CommandSystem.PatrolCommand(hit.point, curSelectGroup, !isQueued);
-                }
-                else if (inputMode == InputMode.None)
-                {
+                // Calculate and initially synchronize both left click and release position
+                leftClickMouseWorldPosition_Click = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+                leftClickMouseWorldPosition_Release = leftClickMouseWorldPosition_Click;
+                //Debug.Log("Left Clicked at " + leftClickMousePosition_Click);
 
+                RaycastHit hit;
+                Physics.Raycast(leftClickMouseWorldPosition_Click, Camera.main.transform.forward, out hit, 1000, LayerMask.GetMask(Tags.Ground));
+
+                if (curSelectGroup.entityList.Count > 0)
+                {
+                    if (inputMode == InputMode.AttackButton)
+                    {
+                        curSelectGroup.ResetSelectGroup();
+                        bool isQueued = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+                        CommandSystem.AttackCommand(hit.point, curSelectGroup, !isQueued);
+                    }
+                    else if (inputMode == InputMode.MoveButton)
+                    {
+                        curSelectGroup.ResetSelectGroup();
+                        bool isQueued = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+                        CommandSystem.MoveCommand(hit.point, curSelectGroup, !isQueued);
+                    }
+                    else if (inputMode == InputMode.PatrolButton)
+                    {
+                        curSelectGroup.ResetSelectGroup();
+                        bool isQueued = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+                        CommandSystem.PatrolCommand(hit.point, curSelectGroup, !isQueued);
+                    }
+                    else if (inputMode == InputMode.None)
+                    {
+
+                    }
                 }
+
             }
-
-            //Debug.Log("Left Clicked at " + leftClickMousePosition_Click);
         }
+
 
         // LEFT CLICK HELD
-        if (Input.GetMouseButton(0))
         {
-            selectFieldBox.enabled = true;
-            RenderSelectField();
+            if (Input.GetMouseButton(0))
+            {
+                selectFieldBox.enabled = true;
+                RenderSelectField();
+            }
+            else { selectFieldBox.enabled = false; }
         }
-        else { selectFieldBox.enabled = false; }
+
 
         // LEFT CLICK UP
-        if (Input.GetMouseButtonUp(0))
         {
-            // Calculate left click release position
-            leftClickMouseWorldPosition_Release = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-
-            if (inputMode == InputMode.None)
+            if (Input.GetMouseButtonUp(0))
             {
-                // Turn selected circle of past units off
-                RenderSelectedCircles(false);
+                // Calculate left click release position
+                leftClickMouseWorldPosition_Release = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
-                // Reset selectables list
-                ClearLists();
+                if (inputMode == InputMode.None)
+                {
+                    // Turn selected circle of past units off
+                    RenderSelectedCircles(false);
 
-                // Add units detected in a box collider (with limits determined by left click-release position) to the list
-                AddSelectablesToList();
+                    // Reset current selectables, unit, structure list
+                    ClearLists();
 
-                // Turn selected circle of past units off
-                RenderSelectedCircles(true);
+                    // Add units detected in a box collider (with limits determined by left click-release position) to the list
+                    AddSelectablesToList();
+
+                    // Turn selected circle of past units off
+                    RenderSelectedCircles(true);
+                }
+
+                SetInputMode(InputMode.None);
+
+                //Debug.Log("Left Released at " + leftClickMousePosition_Release);
             }
-
-
-            SetInputMode(InputMode.None);
-
-            //Debug.Log("Left Released at " + leftClickMousePosition_Release);
         }
+
 
         // RIGHT CLICK DOWN
-        if (Input.GetMouseButtonDown(1))
         {
-            // Calculate right click position
-            rightClickMouseWorldPosition_Click = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            rightClickMouseWorldPosition_Release = rightClickMouseWorldPosition_Click;
-            //Debug.Log("Right Released at " + rightClickMousePosition_Click);
-            RaycastHit hit;
-            Physics.Raycast(rightClickMouseWorldPosition_Click, Camera.main.transform.forward, out hit, 1000, LayerMask.GetMask(Tags.Ground));
-
-            if (curSelectGroup.entityList.Count > 0)
+            if (Input.GetMouseButtonDown(1))
             {
-                curSelectGroup.ResetSelectGroup();
-                IEntity enemyAtMouse = CommandSystem.ReturnEntityAtMouse(IEntity.RelationshipType.Enemy, hit.point);
-                if ( enemyAtMouse == null)
-                {
-                    bool isQueued = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-                    CommandSystem.MoveCommand(hit.point, curSelectGroup, !isQueued);
-                }
-                else
-                {
-                    bool isQueued = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-                    CommandSystem.AttackTargetCommand(enemyAtMouse, curSelectGroup, !isQueued);
-                }
-            }
+                // Calculate and initially synchronize both right click and release position
+                rightClickMouseWorldPosition_Click = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+                rightClickMouseWorldPosition_Release = rightClickMouseWorldPosition_Click;
+                //Debug.Log("Right Released at " + rightClickMousePosition_Click);
 
+                RaycastHit hit;
+                Physics.Raycast(rightClickMouseWorldPosition_Click, Camera.main.transform.forward, out hit, 1000, LayerMask.GetMask(Tags.Ground));
+
+                if (curSelectGroup.entityList.Count > 0)
+                {
+                    curSelectGroup.ResetSelectGroup();
+                    IEntity enemyAtMouse = CommandSystem.ReturnEntityAtMouse(IEntity.RelationshipType.Enemy, hit.point);
+                    if (enemyAtMouse == null)
+                    {
+                        bool isQueued = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+                        CommandSystem.MoveCommand(hit.point, curSelectGroup, !isQueued);
+                    }
+                    else
+                    {
+                        bool isQueued = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+                        CommandSystem.AttackTargetCommand(enemyAtMouse, curSelectGroup, !isQueued);
+                    }
+                }
+
+            }
         }
+
 
         // RIGHT CLICK HELD
-        if (Input.GetMouseButton(1))
         {
+            if (Input.GetMouseButton(1))
+            {
 
+            }
         }
+
 
         //RIGHT CLICK UP
-        if (Input.GetMouseButtonUp(1))
         {
-            // Calculate right click release position
-            rightClickMouseWorldPosition_Release = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            if (Input.GetMouseButtonUp(1))
+            {
+                // Calculate right click release position
+                rightClickMouseWorldPosition_Release = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
-            SetInputMode(InputMode.None);
+                SetInputMode(InputMode.None);
 
-            //Debug.Log("Right Released at " + rightClickMousePosition_Release);
+                //Debug.Log("Right Released at " + rightClickMousePosition_Release);
+            }
         }
+        
     }
 
-    public void SetInputMode(InputMode mode)
-    {
-        inputMode = mode;
-    }
+    /// <summary>
+    /// English: Set input mode (with different input mode, left clicking will behave differently)
+    /// 日本語：インプットのモードを設定する（モードによって、左クリックの機能は異なる）
+    /// </summary>
+    /// <param name="mode"></param>
+    public void SetInputMode(InputMode _mode) { inputMode = _mode; }
 
-
-    // Add units detected by Physics.OverlapBox() at the center position of click and release, with offset towards the ground.
+    /// <summary>
+    /// English: Populate selectables, unit, structure lists with IEntity (IUnit or IStructure) resulting from Physics.OverlapBox() from the camera.
+    /// 日本語：selectables、Unit、StructureのリストにPhysics.OverlapBox（）の結果を割り当てる。
+    /// </summary>
     public void AddSelectablesToList()
     {
         Vector3 point1 = leftClickMouseWorldPosition_Click;
@@ -353,6 +382,11 @@ public class SelectSystem : MonoBehaviour
         
     }
 
+    /// <summary>
+    /// English: Save a group to the select group List for future uses by creating a child with SelectGroup component of this gameObject
+    /// 日本語：このgameObjectのchildとしてグループを今後使えるように保存する。
+    /// </summary>
+    /// <param name="_groupIndex"></param>
     public void AddToSelectGroupList(int _groupIndex)
     {
         if(transform.Find($"Static SelectGroup No.{_groupIndex}") == null)
@@ -390,14 +424,21 @@ public class SelectSystem : MonoBehaviour
         Debug.Log($"Added Static SelectGroup No.{_groupIndex}");
     }
 
+    /// <summary>
+    /// English: Assign a group from the list to the current select group to command.
+    /// 日本語：リストからのグループを現在の使用しているグループ変数に割り当てる。
+    /// </summary>
+    /// <param name="_groupIndex"></param>
     public void AssignCurrentSelectGroup(int _groupIndex)
     {
         if(_groupIndex > selectGroupList.Count - 1) { return; }
         if(selectGroupList[_groupIndex] == null) { Debug.Log($"Static SelectGroup No.{_groupIndex} is NULL"); return; }
 
         curSelectGroup = selectGroupList[_groupIndex];
+
+        // Repopulate selectables, unit, structure list
         ClearLists();
-        foreach(IEntity curEntity in curSelectGroup.entityList)
+        foreach (IEntity curEntity in curSelectGroup.entityList)
         {
             selectableList.Add(curEntity);
             if(curEntity is IUnit unit)
@@ -409,11 +450,17 @@ public class SelectSystem : MonoBehaviour
                 structureList.Add(structure);
             }
         }
+
         RenderSelectedCircles(true);
-        Debug.Log($"Assign Current SelectGroup to SelectGroup No.{_groupIndex}");
+
+        Debug.Log($"Assigned Current SelectGroup to SelectGroup No.{_groupIndex}");
     }
 
-    // Render Selected Circles of All Selectables
+    /// <summary>
+    /// English: Set the selected circles of currently selected entities.
+    /// 日本語：現在の使用しているEntityの選ばれた円の状態を設定する。
+    /// </summary>
+    /// <param name="isOn"></param>
     public void RenderSelectedCircles(bool isOn)
     {
         if (unitList.Count > 0)
@@ -433,6 +480,10 @@ public class SelectSystem : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// English: Clear current selectables, unit, structure lists
+    /// 日本語：現在のselectables, unit, structureのリストをクリアする。
+    /// </summary>
     public void ClearLists()
     {
         unitList.Clear();
@@ -444,8 +495,10 @@ public class SelectSystem : MonoBehaviour
         Debug.Log("Clear All List");
     }
 
-    // Update the position of the cursor basing on the mouse position (all in pixels, in screen space).
-    // Anchored Point is bottom left of the map
+    /// <summary>
+    /// English: Update cursors transform on the screen basing on current mouse position.
+    /// 日本語：マウス位置で画面上のカーソル位置を更新する
+    /// </summary>
     private void UpdateCursorTransform()
     {
         Vector3 mousePos = Input.mousePosition;
@@ -455,13 +508,14 @@ public class SelectSystem : MonoBehaviour
         cursorPosition.anchoredPosition = new Vector2(percentX * Screen.currentResolution.width, percentY * Screen.currentResolution.height);
     }
 
-    // Render Select Field as an empty rectangle, determined by 4 vertices (in pixel coord, in screen space), connected by a Line Renderer
-    // Anchored Point is bottom left of the map
+    /// <summary>
+    /// English: Render (Set vertices' positions) select field basing on left click mouse and current mouse position (click and drag).
+    /// 日本語：左クリックの位置と現在マウス位置（クリック＆ドラッグ）で選ぶフィールドをレンだー（頂点の位置を設定する）する。
+    /// </summary>
     private void RenderSelectField()
     {
         selectFieldBox.startWidth = selectFieldWidth;
         selectFieldBox.endWidth = selectFieldWidth;
-        
 
         Vector3 leftClickPos_Click = Camera.main.WorldToScreenPoint(leftClickMouseWorldPosition_Click);
         float percentX_Click = Mathf.Clamp01(leftClickPos_Click.x / Camera.main.scaledPixelWidth);
@@ -471,19 +525,19 @@ public class SelectSystem : MonoBehaviour
         float percentX_Cur = Mathf.Clamp01(mousePos_Cur.x / Camera.main.scaledPixelWidth);
         float percentY_Cur = Mathf.Clamp01(mousePos_Cur.y / Camera.main.scaledPixelHeight);
 
-
         Vector3[] vertexArray = new Vector3[4];
         vertexArray[0] = new Vector3(percentX_Click * Screen.currentResolution.width, percentY_Click * Screen.currentResolution.height, 0);
         vertexArray[1] = new Vector3(percentX_Cur * Screen.currentResolution.width, percentY_Click * Screen.currentResolution.height, 0);
         vertexArray[2] = new Vector3(percentX_Cur * Screen.currentResolution.width, percentY_Cur * Screen.currentResolution.height, 0);
         vertexArray[3] = new Vector3(percentX_Click * Screen.currentResolution.width, percentY_Cur * Screen.currentResolution.height, 0);
 
-
         selectFieldBox.SetPositions(vertexArray);
     }
 
-    
-
+    /// <summary>
+    /// English: Reset all mouse position variables to Vector3.zero
+    /// 日本語：マウスの位置の変数をすべてゼロにする。
+    /// </summary>
     private void ResetClickReleasePosition()
     {
         leftClickMouseWorldPosition_Click = Vector3.zero;
@@ -497,6 +551,7 @@ public class SelectSystem : MonoBehaviour
     private void OnDrawGizmos()
     {
         if(!displayGizmos) { return; }
+
         Gizmos.color = Color.red;
 
         Vector3 point1 = leftClickMouseWorldPosition_Click;
@@ -506,11 +561,14 @@ public class SelectSystem : MonoBehaviour
         Vector3 point3 = Camera.main.ViewportToWorldPoint(point3ViewPort);
         Vector3 point4ViewPort = new Vector3(Camera.main.WorldToViewportPoint(point2).x, Camera.main.WorldToViewportPoint(point1).y, 0);
         Vector3 point4 = Camera.main.ViewportToWorldPoint(point4ViewPort);
+
+        // Draw a box on the screen with 4 vertices in world spaces
         Gizmos.DrawLine(point1, point3);
         Gizmos.DrawLine(point3, point2);
         Gizmos.DrawLine(point2, point4);
         Gizmos.DrawLine(point4, point1);
 
+        // Draw the box that would be used when select entities in world spaces
         Gizmos.DrawLine(point1, point1 + Camera.main.transform.forward * 1000);
         Gizmos.DrawLine(point2, point2 + Camera.main.transform.forward * 1000);
         Gizmos.DrawLine(point3, point3 + Camera.main.transform.forward * 1000);

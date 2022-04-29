@@ -3,18 +3,24 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// English: A class that will control most of the UI elements (including functional buttons and commands) that visualizes the current state of the game
+/// 日本語：ゲームの状況を表すほとんどのUI要素（機能のあるボタンやコマンドを含め）をコントロールするクラス。
+/// </summary>
 public class UIController : MonoBehaviour
 {
     [Header("Select System")]
     [SerializeField]
     private SelectSystem selectSystem;
 
+    // *********** Bottom Left of the Screen  ************
     [Header("Left_Minimap")]
     [SerializeField]
     private GameObject miniMap;
     [SerializeField]
     private Texture miniMapTexture;
 
+    // **********  Bottom Middle of the Screen  ***********
     [Header("Middle_Panel")]
     [SerializeField]
     private GameObject displayPanel;
@@ -61,17 +67,19 @@ public class UIController : MonoBehaviour
     [SerializeField]
     private ProgressBar progressBar;
 
-    
+    // **********  Bottom Middle of the Screen, on top of the display panel  ***********
+    [Header("Select Group Bar")]
+    [SerializeField]
+    private GameObject[] selectGroupArray;
+
+    // **********  Bottom Right of the Screen  ***********
     [Header("Right_Command Panel")]
     [SerializeField]
     private GameObject commandPanel;
     [SerializeField]
     private Image[] commandArray;
 
-    [Header("Select Group Bar")]
-    [SerializeField]
-    private GameObject[] selectGroupArray;
-
+    // **********  Top Right of the Screen  ***********
     [Header("Resource Panel")]
     [SerializeField]
     private TMPro.TextMeshProUGUI ResourceOneText;
@@ -113,7 +121,11 @@ public class UIController : MonoBehaviour
     }
 
 
-
+    /// <summary>
+    /// English: Update the Entity Panel with information from the entity parameter.
+    /// 日本語：entityパラメータからの情報で、Entityパネルを更新する。
+    /// </summary>
+    /// <param name="_entity"></param>
     public void UpdateEntityPanel(IEntity _entity)
     {
         if(_entity == null) { return; }
@@ -135,16 +147,21 @@ public class UIController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// English: Update the Current Group Panel with information from the a list of entities parameter.
+    /// 日本語：Entityのリストのパラメータからの情報で、現在使用しているグループのパネルを更新する。
+    /// </summary>
+    /// <param name="_curGroupList"></param>
     public void UpdateCurrentGroupPanel(List<IEntity> _curGroupList)
     {
         if(_curGroupList == null) { return; }
         if(_curGroupList.Count == 0) { return; }
+
         int subGroupCount = curGroupDisplayPanel.transform.childCount;
         int eachGroupEntityCount = curGroupDisplayPanel.transform.GetChild(0).transform.childCount;
 
         float count = _curGroupList.Count / eachGroupEntityCount;
         int buttonIndex = 0;
-
         for (int groupIndex = 0; groupIndex < count; groupIndex++)
         {
             if (buttonIndex > _curGroupList.Count) { return; }
@@ -162,6 +179,11 @@ public class UIController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// English: Update the current entity's Production Panel with information from the entity parameter.
+    /// 日本語：entityのパラメータからの情報で、現在選んでいるEntityのプロダクション（進捗など）のパネルを更新する。
+    /// </summary>
+    /// <param name="_entity"></param>
     public void UpdateProductionPanel(IEntity _entity)
     {
         if(_entity == null) { return; }

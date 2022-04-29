@@ -2,10 +2,16 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// English: A class for a Marine, implementing IUnit interface. Contains the basic information and stats of the unit.
+/// Also manages health, etc
+/// 日本語：マリーンのクラス、IUniｔインターフェースを実装する。ユニットの基本情報や数値をもつ。
+/// その他、体力などを管理する
+/// </summary>
 [RequireComponent(typeof(Rigidbody), typeof(Collider))]
 public class Marine : MonoBehaviour, IUnit
 {
-    // DESCRIPTION:
+    [Header("Basic Info")]
     [SerializeField]
     protected IEntity.SelectionType selectionType;
     [SerializeField]
@@ -13,6 +19,7 @@ public class Marine : MonoBehaviour, IUnit
     [SerializeField]
     protected Sprite portrait;
 
+    [Header("Stats Info")]
     [SerializeField]
     protected float setHealth;
     [SerializeField]
@@ -27,6 +34,8 @@ public class Marine : MonoBehaviour, IUnit
     protected float setVisionRange;
     [SerializeField]
     protected float setBuildingTime;
+
+    [Header("Others")]
     [SerializeField]
     protected float selectedCircleRadius;
     [SerializeField]
@@ -37,12 +46,13 @@ public class Marine : MonoBehaviour, IUnit
 
     protected GameObject selectedCircle;
 
-    //Components
+    //　Components
     protected Rigidbody rb;
     protected Collider col;
 
     public virtual void Awake()
     {
+        // Initialization
         rb = gameObject.GetComponent<Rigidbody>();
         col = gameObject.GetComponent<Collider>();
 
@@ -76,7 +86,7 @@ public class Marine : MonoBehaviour, IUnit
 
     public virtual void Update()
     {
-        AutoSeparationFromNearbyUnit(0.5f, 3f);
+        //AutoSeparationFromNearbyUnit(0.5f, 3f);
         if (CanAttack() == false)
             SetCurrentAttackCooldown(curAttackCooldown + Time.deltaTime);
 
@@ -84,6 +94,11 @@ public class Marine : MonoBehaviour, IUnit
 
     }
 
+    /// <summary>
+    /// ※　NOT USED　＊
+    /// </summary>
+    /// <param name="_pushForce"></param>
+    /// <param name="_radius"></param>
     protected void AutoSeparationFromNearbyUnit(float _pushForce, float _radius)
     {
         Collider[] colliders = Physics.OverlapSphere(rb.position, _radius, LayerMask.GetMask(Tags.Selectable), QueryTriggerInteraction.Ignore);
@@ -104,43 +119,29 @@ public class Marine : MonoBehaviour, IUnit
         rb.AddForce(moveVector.normalized * _pushForce);
     }
 
-    public virtual void OnDrawGizmos()
-    {
-        Gizmos.color = Color.blue;
-        Gizmos.DrawLine(transform.position, transform.position + transform.forward * 2);
-
-        Gizmos.color = Color.green;
-        Gizmos.DrawWireSphere(transform.position, setVisionRange);
-
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, setAttackRange);
-
-    }
-
 
     // IMPLEMENTATION for IUnit
     public IEntity.SelectionType GetSelectionType() { return selectionType; }
     public IEntity.RelationshipType GetRelationshipType() { return relationshipType; }
     public Sprite GetPortrait() { return portrait; }
 
-
+    
     public void MinusHealth(float _amount)
     {
         if (_amount < 0) { _amount = 0; }
         curHealth -= _amount;
         if (curHealth < 0) { curHealth = 0; }
     }
-
+    
     public void PlusHealth(float _amount)
     {
         if (_amount < 0) { _amount = 0; }
         curHealth += _amount;
         if (_amount > setHealth) { _amount = setHealth; }
     }
-
+    
     public bool HealthIsZero() { return curHealth <= 0; }
-
-
+    
     public void RenderSelectedCircle(bool isOn)
     {
         if (selectedCircle == null) { return; }
@@ -149,21 +150,23 @@ public class Marine : MonoBehaviour, IUnit
         else
             selectedCircle.SetActive(false);
     }
-
+    
     public void SetCurrentHealth(float _setAmount)
     {
         curHealth = _setAmount;
         if (curHealth < 0) { curHealth = 0; }
         if (curHealth > setHealth) { curHealth = setHealth; }
     }
-
+    
     public void SetCurrentAttackCooldown(float _setTime)
     {
         curAttackCooldown = _setTime;
         if (curAttackCooldown < 0) { curAttackCooldown = 0; }
     }
 
+    
     public bool CanAttack() { return curAttackCooldown > setAttackCooldown; }
+
 
     public float GetSetHealth() { return setHealth; }
     public float GetSetMovementSpeed() { return setMovementSpeed; }
@@ -203,4 +206,17 @@ public class Marine : MonoBehaviour, IUnit
     public virtual dynamic ReturnSelfType() { return typeof(Marine); }
     public virtual dynamic ReturnNewAction() { return new MarineAction(); }
     public virtual dynamic ReturnActionType() { return typeof(MarineAction); }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.blue;
+        Gizmos.DrawLine(transform.position, transform.position + transform.forward * 2);
+
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(transform.position, setVisionRange);
+
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, setAttackRange);
+
+    }
 }

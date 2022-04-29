@@ -2,13 +2,14 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// DESCRIPTION: Flow Field is a structure that provide the information of the best cost to take and the consequent direction 
+/// towards the destination on the grid for each cell.
+/// Declared and Initialized in SelectGroup ( ONE flow field for MANY actions), which is created as a game object in SelectSystem
+/// </summary>
 public class FlowField
 {
-    /// <summary>
-    /// DESCRIPTION: Flow Field is a structure that provide the information of the best cost to take and the consequent direction 
-    /// towards the destination on the grid for each cell.
-    /// Declared and Initialized in SelectGroup ( ONE flow field for MANY actions), which is created as a game object in SelectSystem
-    /// </summary>
+    
     
     public Cell[,] grid { get; private set; }
     public Vector2Int gridSize { get; private set; }
@@ -22,7 +23,7 @@ public class FlowField
 
 
     /// <summary>
-    /// Constructor of a flowfield with specified cell radius and grid size
+    /// Constructor of a flowfield at a specific position with a specific direction
     /// </summary>
     /// <param name="_cellRadius"></param>
     /// <param name="_gridSize"></param>
@@ -38,7 +39,7 @@ public class FlowField
     }
 
     /// <summary>
-    /// Create a grid that has the origin {0,0} at bottom left. Therefore, there is no negative index/position in the grid.
+    /// Create a grid with direction considered
     /// </summary>
     public void CreateGrid()
     {
@@ -93,7 +94,7 @@ public class FlowField
     }
 
     /// <summary>
-    /// Create an integration field with a specifed destination (per click / command of one or a group of entities)
+    /// Create an integration field with a specifed destination
     /// An integration field will have calculated all cell's best cost to traverse to the destination, by summing up the cost of the cells on the way
     /// </summary>
     /// <param name="_destinationCell"></param>

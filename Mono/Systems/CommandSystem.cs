@@ -2,8 +2,22 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+
+/// <summary>
+/// English：A class that contains commands (static methods) that mainly used by SelectSystem class (with mouse position, select group, etc), used to
+///  create and enqueue action for each individual entity's ActionController class (each action will be run-time type) with in the group.
+/// 日本語：SelectSystemクラス（マウスの位置やUnitグループなどと共に）で使用するコマンド（静的関数）をもつクラス。
+/// コマンドは、グループ内のEntityごとに行動（run-timeタイプ）を作って、そのEntityのActionControllerクラスにEnqueueする。
+/// </summary>
 public class CommandSystem
 {
+    /// <summary>
+    /// English: Command the group of entities to attack a target OR attack move towards the clicked position.
+    /// 日本語：Entityグループを特定のターゲット、または指定した位置に攻撃していくことを指示する。
+    /// </summary>
+    /// <param name="_clickMousePosition"></param>
+    /// <param name="_group"></param>
+    /// <param name="_isInstant"></param>
     public static void AttackCommand(Vector3 _clickMousePosition, SelectGroup _group, bool _isInstant)
     {
         IEntity target = ReturnEntityAtMouse(_clickMousePosition);
@@ -19,7 +33,13 @@ public class CommandSystem
         }
     }
 
-    // 2
+    /// <summary>
+    /// English: Command the group of entities to attack a target.
+    /// 日本語：Entityグループを特定のターゲットを攻撃することを指示する。
+    /// </summary>
+    /// <param name="_target"></param>
+    /// <param name="_group"></param>
+    /// <param name="_isInstant"></param>
     public static void AttackTargetCommand(IEntity _target, SelectGroup _group, bool _isInstant)
     {
         if (_group == null) { return; }
@@ -40,22 +60,20 @@ public class CommandSystem
 
                 _group.entityList[index].GetActionController().EnqueueAction(newAction, _isInstant);
             }
-            //_group.AssignGroupTarget(_target);
             _group.StartUpdateGroup(true);
         }
-        else
-        {
-            Debug.Log("No Target!");
-        }
-
     }
 
-    // 3
+    /// <summary>
+    /// English: Command the group of entities to attack move towards the clicked position.
+    /// 日本語：Entityグループを指定した位置に攻撃していくことを指示する。
+    /// </summary>
+    /// <param name="_destination"></param>
+    /// <param name="_group"></param>
+    /// <param name="_isInstant"></param>
     public static void AttackMoveCommand(Vector3 _destination, SelectGroup _group, bool _isInstant)
     {
         if (_group == null) { return; }
-
-        // Determine to Queue command OR Overwrite past commands by holding SHIFT or not
 
         // Check if the clicked position is traversible
         Debug.Log($"Attack Move Towards: {_destination}");
@@ -71,20 +89,26 @@ public class CommandSystem
 
             _group.entityList[index].GetActionController().EnqueueAction(newAction, _isInstant);
         }
-
         _group.StartUpdateGroup(true);
     }
 
-    
-    // 1
+
+    /// <summary>
+    /// English: Command the group of entities to patrol between its current location and the clicked position.
+    /// 日本語：Entityグループを指定した位置と各々のEntityの現在の位置をパトロールすることを指示する。
+    /// </summary>
+    /// <param name="_moveMousePosition"></param>
+    /// <param name="_group"></param>
+    /// <param name="_isInstant"></param>
     public static void PatrolCommand(Vector3 _moveMousePosition, SelectGroup _group, bool _isInstant)
     {
         if(_group == null) { return; }
+
+        // Check if there is any impassible obstacles in the way to account for an offset in the move position (the obstacle's size)
         Collider[] colliders = Physics.OverlapBox(_moveMousePosition, Vector3.one + Vector3.up * 1000, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Impassible_Terrain), QueryTriggerInteraction.Ignore);
         if (colliders.Length == 0)
         {
             Debug.Log($"Simple Patrol Towards {_moveMousePosition}");
-
             for (int index = 0; index < _group.entityList.Count; index++)
             {
                 dynamic newAction = _group.entityList[index].ReturnNewAction();
@@ -105,7 +129,6 @@ public class CommandSystem
             if (entity != null)
             {
                 Debug.Log($"Move Towards {entity.GetTransform().gameObject.name}");
-
                 for (int index = 0; index < _group.entityList.Count; index++)
                 {
                     Vector3 dir = entity.GetWorldPosition() - _group.entityList[index].GetWorldPosition();
@@ -132,20 +155,19 @@ public class CommandSystem
         }
     }
 
-    // 0
     /// <summary>
-    /// Command the group of units to move towards a destination specified by mouse position
+    /// English: Command the group of entities to move towards the clicked position.
+    /// 日本語：Entityグループを指定した位置まで移動することを指示する。
     /// </summary>
     public static void MoveCommand(Vector3 _destinationPosition, SelectGroup _group, bool _isInstant)
     {
         if (_group == null) { return; }
 
-        // Check if the clicked position is traversible
+        // Check if there is any impassible obstacles in the way to account for an offset in the move position (the obstacle's size)
         Collider[] colliders = Physics.OverlapBox(_destinationPosition, Vector3.one + Vector3.up * 1000, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Impassible_Terrain), QueryTriggerInteraction.Ignore);
         if (colliders.Length == 0)
         {
             Debug.Log($"Move Towards {_destinationPosition}");
-
             for (int index = 0; index < _group.entityList.Count; index++)
             {
                 if (_group.entityList[index] == null) { continue; }
@@ -159,7 +181,6 @@ public class CommandSystem
             }
             
             _group.StartUpdateGroup(true);
-            return;
         }
         else
         {
@@ -167,7 +188,6 @@ public class CommandSystem
             if(entity != null)
             {
                 Debug.Log($"Move Towards {entity.GetTransform().gameObject.name}");
-
                 for (int index = 0; index < _group.entityList.Count; index++)
                 {
                     Vector3 dir = entity.GetWorldPosition() - _group.entityList[index].GetWorldPosition();
@@ -192,10 +212,15 @@ public class CommandSystem
     }
 
 
-
+    /// <summary>
+    /// English: Return an entity with specified relationship type at the mouse position.
+    /// 日本語：マウスの位置にあり、指定した関係性を持つEntityを返す。
+    /// </summary>
+    /// <param name="_relationshipType"></param>
+    /// <param name="_clickMousePosition"></param>
+    /// <returns></returns>
     public static IEntity ReturnEntityAtMouse(IEntity.RelationshipType _relationshipType, Vector3 _clickMousePosition)
     {
-        // Check for enemy at mouse when right click
         IEntity enemy = null;
 
         Collider[] colliders = Physics.OverlapBox(_clickMousePosition, Vector3.one + Vector3.up * 100, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
@@ -214,9 +239,15 @@ public class CommandSystem
         return enemy;
     }
 
+    /// <summary>
+    /// English: Return an entity with specified entity type at the mouse position.
+    /// 日本語：マウスの位置にあり、指定したentityタイプを持つEntityを返す。
+    /// </summary>
+    /// <param name="_entityType"></param>
+    /// <param name="_clickMousePosition"></param>
+    /// <returns></returns>
     public static IEntity ReturnEntityAtMouse(IEntity.EntityType _entityType, Vector3 _clickMousePosition)
     {
-        // Check for enemy at mouse when right click
         IEntity entity = null;
 
         Collider[] colliders = Physics.OverlapBox(_clickMousePosition, Vector3.one + Vector3.up * 100, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
@@ -235,9 +266,14 @@ public class CommandSystem
         return entity;
     }
 
+    /// <summary>
+    /// English: Return an entity at the mouse position.
+    /// 日本語：マウスの位置にあるEntityを返す。
+    /// </summary>
+    /// <param name="_clickMousePosition"></param>
+    /// <returns></returns>
     public static IEntity ReturnEntityAtMouse(Vector3 _clickMousePosition)
     {
-        // Check for enemy at mouse when right click
         IEntity entity = null;
 
         Collider[] colliders = Physics.OverlapBox(_clickMousePosition, Vector3.one + Vector3.up * 100, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));

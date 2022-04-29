@@ -5,6 +5,9 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
+/// <summary>
+/// A class for debugging grids and flowfield
+/// </summary>
 public class GridDebug : MonoBehaviour
 {
     [SerializeField]

@@ -2,12 +2,21 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// English: A class that allows the selection of an individual entity stored as a reference here and the shifting of the camera for focusing when clicked.
+/// 日本語：ここに保存されたEntityの選択とそのEntityまでのカメラ移動ができるボタンを持つクラス。
+/// </summary>
 public class EntityButton : MonoBehaviour, IButton
 {
     public IEntity entity;
     public SelectSystem selectSystem;
     public CameraControl cameraControl;
     private Sprite image;
+    
+    /// <summary>
+    /// English: Clear the current SelectSystem class's current group's lists, add this entity for selection, and shift the camera to its position.
+    /// 日本語：現在のSelectSystemクラスの現在使用しているグループのリストをクリアし、このEntityを加え（選択）、カメラをこのEntityの位置まで移動させる。
+    /// </summary>
     public void OnClick()
     {
         if(entity == null) { return; }
@@ -40,6 +49,11 @@ public class EntityButton : MonoBehaviour, IButton
         cameraControl.MoveCameraTo(entity.GetWorldPosition());
     }
 
+    /// <summary>
+    /// English: Return the sprite associated with the entity to be used in UI.
+    /// 日本語：UIで使用されるEntityのポートレートのSpriteを返す。
+    /// </summary>
+    /// <returns></returns>
     public Sprite GetImage()
     {
         if(entity == null) { return null; }

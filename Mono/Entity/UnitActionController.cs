@@ -2,15 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// English: A class that control the execution and dequeueing actions of enqueued by the Select and CommandSystem class
+/// 日本語：SelectおよびCommandSystemクラスによってキューされた行動のdequeueと実行を管理するクラス
+/// </summary>
 [RequireComponent(typeof(IUnit))]
 public class UnitActionController : MonoBehaviour
 {
-    /// <summary>
-    /// DESCRIPTION: An Action Controller is a component attached to a Unit gameObject.
-    /// Used to QUEUE and EXECUTE actions
-    /// </summary>
-    /// 
-    
     public Queue<IAction> actionQueue { get; private set; }
     private IAction curAction;
 
@@ -43,7 +41,8 @@ public class UnitActionController : MonoBehaviour
     }
 
     /// <summary>
-    /// Perform the current action (dequeue from the queue) per frame updated.
+    /// English: Perform the current action (dequeue from the queue) per frame fixedUpdated.
+    /// 日本語：フレームごとに（FixedUpdate）現在の行動を実行する。
     /// </summary>
     private void ExecuteCurrentAction()
     {
@@ -86,9 +85,12 @@ public class UnitActionController : MonoBehaviour
         }
     }
 
-    //[Enqueue] OR [Clear queue, then Enqueue] an action to simulate chain of commands.
-    // Called in SelectSystem when right click
-    // bool isInstant is false if SHIFT is held when right click. if not, true
+    /// <summary>
+    /// English: Enqueue an action. If isInstant, clear the queue first
+    /// 日本語：行動をキューする。isInstantの場合、先にキューをクリアする。
+    /// </summary>
+    /// <param name="_action"></param>
+    /// <param name="isInstant"></param>
     public void EnqueueAction(IAction _action, bool isInstant)
     {
         if (isInstant == true)
@@ -110,7 +112,10 @@ public class UnitActionController : MonoBehaviour
         Debug.Log("Action Enqueued");
     }
 
-    // Dequeue an action from the list to current action variable
+    /// <summary>
+    /// English: Dequeue an action to the current action.
+    /// 日本語：キューから行動を取り出し、現在の行動に割り当てる。
+    /// </summary>
     private void DequeueActionToCurrentAction()
     {
         //Validity Check

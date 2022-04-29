@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+/// <summary>
+/// DESCRIPTION: Grid Direction determines the unit vector used in the creation of the flowfield
+/// </summary>
 public class GridDirection
 {
-    /// <summary>
-    /// DESCRIPTION: Grid Direction determines the unit vector used in the creation of the flowfield
-    /// </summary>
+    
     
     public readonly Vector2Int Vector;
 

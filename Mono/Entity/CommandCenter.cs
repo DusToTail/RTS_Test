@@ -2,13 +2,20 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// English: A class for a Command Center, implementing IStructure interface. Contains the basic information and stats of the structure.
+/// Also manages health, and information for production
+/// 日本語：Command Center のクラス、IUniｔインターフェースを実装する。ビルディングの基本情報や数値をもつ。
+/// その他、体力、生産の情報などを管理する
+/// </summary>
 public class CommandCenter : MonoBehaviour, IStructure
 {
+    [Header("Production / Upgrade")]
     public GameObject[] unitPrefabs;
     public GameObject[] upgradePrefabs;
     public Transform spawnPosition;
 
-    // DESCRIPTION:
+    [Header("Basic Info")]
     [SerializeField]
     protected IEntity.SelectionType selectionType;
     [SerializeField]
@@ -16,6 +23,7 @@ public class CommandCenter : MonoBehaviour, IStructure
     [SerializeField]
     protected Sprite portrait;
 
+    [Header("Stats Info")]
     [SerializeField]
     protected float setHealth;
     [SerializeField]
@@ -24,6 +32,8 @@ public class CommandCenter : MonoBehaviour, IStructure
     protected float setVisionRange;
     [SerializeField]
     protected float setBuildingTime;
+
+    [Header("Others")]
     [SerializeField]
     protected float selectedCircleRadius;
     [SerializeField]
@@ -34,14 +44,13 @@ public class CommandCenter : MonoBehaviour, IStructure
 
     protected GameObject selectedCircle;
 
-    //Components
+    //　Components
     protected Collider col;
     protected Rigidbody rb;
 
-    //Components
-
     public virtual void Awake()
     {
+        // Initialization
         col = gameObject.GetComponent<Collider>();
         rb = gameObject.GetComponent<Rigidbody>();
 
@@ -74,15 +83,7 @@ public class CommandCenter : MonoBehaviour, IStructure
         if (HealthIsZero()) { Destroy(this.gameObject); }
     }
 
-    private void OnDrawGizmos()
-    {
-        Gizmos.color = Color.blue;
-        Gizmos.DrawLine(transform.position, transform.position + transform.forward * 2);
-
-        Gizmos.color = Color.green;
-        Gizmos.DrawWireSphere(transform.position, setVisionRange);
-
-    }
+    
 
 
     // IMPLEMENTATION for IStructure
@@ -90,7 +91,11 @@ public class CommandCenter : MonoBehaviour, IStructure
     public IEntity.RelationshipType GetRelationshipType() { return relationshipType; }
     public Sprite GetPortrait() { return portrait; }
 
-
+    /// <summary>
+    /// English: Minus current health for the specified amount. Clamp it at 0
+    /// 日本語：現在の体力を指定した量マイナスする。０以下になれば０にする。
+    /// </summary>
+    /// <param name="_amount"></param>
     public void MinusHealth(float _amount)
     {
         if (_amount < 0) { _amount = 0; }
@@ -98,6 +103,11 @@ public class CommandCenter : MonoBehaviour, IStructure
         if (curHealth < 0) { curHealth = 0; }
     }
 
+    /// <summary>
+    /// English: Plus current health for the specified amount. Clamp it at max health
+    /// 日本語：現在の体力を指定した量プラスする。体力の最大値以上になれば最大値にする。
+    /// </summary>
+    /// <param name="_amount"></param>
     public void PlusHealth(float _amount)
     {
         if (_amount < 0) { _amount = 0; }
@@ -165,4 +175,14 @@ public class CommandCenter : MonoBehaviour, IStructure
     public virtual dynamic ReturnNewAction() { return new CommandCenterAction(); }
     public virtual dynamic ReturnActionType() { return typeof(CommandCenterAction); }
 
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.blue;
+        Gizmos.DrawLine(transform.position, transform.position + transform.forward * 2);
+
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(transform.position, setVisionRange);
+
+    }
 }
