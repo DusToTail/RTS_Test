@@ -26,8 +26,8 @@ public interface IEntity
         Neutral
     }
     /// <summary>
-    /// English：Either Unit or Structure
-    /// 日本語：ユニットかビルディングか
+    /// English：Types of entity (unit, structure, obstacle, etc)
+    /// 日本語：entityの種類（ユニット、ビルディング、障害物など）
     /// </summary>
     public enum EntityType
     {

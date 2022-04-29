@@ -36,6 +36,7 @@ public class MarineAction : IMarineAction
     public FlowField selfFlowField { get; set; }
     public int curWaypointIndex { get; set; }
 
+    private List<IEntity> obstacles;
 
     /// <summary>
     /// Default Constructor. When used, need separate initialization for each type of Action.
@@ -52,6 +53,8 @@ public class MarineAction : IMarineAction
         selfFlowField = null;
         curFlowField = null;
 
+        obstacles = new List<IEntity>();
+
         isFinished = false;
         group = null;
     }
@@ -65,7 +68,7 @@ public class MarineAction : IMarineAction
 
         float destinationDistance = (_rb.position - attackMousePosition).magnitude;
         IEntity closestEnemy = ReturnNearbyEnemy(_rb, _visionRange);
-        if (destinationDistance < 1 && closestEnemy == null)
+        if (destinationDistance < 3 && closestEnemy == null)
         {
             Debug.Log("Attack move reached destination and no enemy nearby");
             Debug.Log("Action is finished");
@@ -226,8 +229,8 @@ public class MarineAction : IMarineAction
         // Check if the entity has reached the destination or has reached the temporary position to update self flowfield
         float destinationDistance = new Vector3(_rb.position.x - moveMousePosition.x, 0, _rb.position.z - moveMousePosition.z).magnitude;
         float cellDistance = (curFlowField.GetCellFromWorldPos(_rb.position).gridPosition - curFlowField.destinationCell.gridPosition).magnitude;
-
-        if (destinationDistance < 1)
+        
+        if (destinationDistance < 3)
         {
             Debug.Log("Action is finished");
             StopMoving(_rb);
@@ -236,14 +239,26 @@ public class MarineAction : IMarineAction
         }
         else if(cellDistance < 1)
         {
-            //Debug.Log("Update current flowfield");
             Vector2 dir = new Vector2(moveMousePosition.x - _rb.position.x, moveMousePosition.z - _rb.position.z).normalized;
-            float distance = curFlowField.cellRadius * 2 * Mathf.Sqrt(curFlowField.gridSize.x * curFlowField.gridSize.x + curFlowField.gridSize.y * curFlowField.gridSize.y);
+            float distance = curFlowField.cellRadius * 2 * ((curFlowField.gridSize.x > curFlowField.gridSize.y)? curFlowField.gridSize.y : curFlowField.gridSize.x);
             if(destinationDistance < distance)
                 distance = destinationDistance;
-            Vector3 nextPosition = _rb.position + new Vector3(dir.x, 0, dir.y) * distance;
-            InitializeSelfFlowField(_rb.position, nextPosition);
-            AssignCurrentFlowField(selfFlowField);
+            Vector3 nextPosition = _rb.position + new Vector3(dir.x, 0, dir.y).normalized * distance;
+
+            // Check for entity at the position to initialize the approriate flowfield
+            IObstacle obstacle = CommandSystem.ReturnObstacleAtMouse(nextPosition);
+            if(obstacle == null)
+            {
+                InitializeSelfFlowField(_rb.position, nextPosition);
+                AssignCurrentFlowField(selfFlowField);
+                Debug.Log("Updated current flowfield without obstacle");
+            }
+            else
+            {
+                InitializeSelfFlowField(_rb.position, nextPosition, obstacle);
+                AssignCurrentFlowField(selfFlowField);
+                Debug.Log("Updated current flowfield with obstacle");
+            }
         }
 
         // Move with Rigidbody
@@ -361,7 +376,19 @@ public class MarineAction : IMarineAction
     /// <param name="_moveMousePosition"></param>
     public void InitializeMoveTowards(Vector3 _curPosition, Vector3 _moveMousePosition)
     {
+        // Check for entity at the position to initialize the approriate flowfield
         InitializeSelfFlowField(_curPosition, _moveMousePosition);
+        IObstacle obstacle = CommandSystem.ReturnObstacleAtMouse(selfFlowField.destinationCell.worldPosition);
+        if (obstacle == null)
+        {
+            AssignCurrentFlowField(selfFlowField);
+            Debug.Log("Updated current flowfield without obstacle");
+        }
+        else
+        {
+            InitializeSelfFlowField(_curPosition, _moveMousePosition, obstacle);
+            Debug.Log("Updated current flowfield with obstacle");
+        }
 
         moveMousePosition = _moveMousePosition;
 
@@ -427,6 +454,35 @@ public class MarineAction : IMarineAction
         selfFlowField.CreateCostField();
         selfFlowField.CreateIntegrationField(selfFlowField.GetCellFromWorldPos(_destinationPosition));
         selfFlowField.CreateFlowField();
+
+        GridDebug.SetCurFlowField(selfFlowField);
+        //GridDebug.DrawFlowField();
+    }
+
+    /// <summary>
+    /// English: Creating a NEW self flowfield) with current position, the destination position and obstacle in consideration
+    /// 日本語：現在の位置と目的地と障害物で新しい独自のFlowFieldを作成する。
+    /// </summary>
+    /// <param name="_curPosition"></param>
+    /// <param name="_obstacle"></param>
+    public void InitializeSelfFlowField(Vector3 _curPosition, Vector3 _destinationPosition, IObstacle _obstacle)
+    {
+        Vector2 dir = new Vector2(_obstacle.GetWorldPosition().x - _curPosition.x, _obstacle.GetWorldPosition().z - _curPosition.z).normalized;
+        float cellRadius = GameObject.FindObjectOfType<GridController>().cellRadius;
+        Vector2Int gridSize = GameObject.FindObjectOfType<GridController>().gridSize;
+        Vector3 newDestinationPosition = _destinationPosition;
+        while(CommandSystem.ReturnObstacleAtMouse(newDestinationPosition) != null)
+        {
+            newDestinationPosition += new Vector3(dir.x, 0, dir.y) * cellRadius * 2;
+        }
+
+        selfFlowField = new FlowField(_obstacle.GetWorldPosition(), cellRadius, _obstacle.GetObstacleGridSize() + gridSize);
+        selfFlowField.CreateGrid();
+        selfFlowField.CreateCostField();
+        selfFlowField.CreateIntegrationField(selfFlowField.GetCellFromWorldPos(newDestinationPosition));
+        selfFlowField.CreateFlowField();
+        GridDebug.SetCurFlowField(selfFlowField);
+        //GridDebug.DrawFlowField();
     }
 
     /// <summary>

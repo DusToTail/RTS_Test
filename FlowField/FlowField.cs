@@ -21,6 +21,22 @@ public class FlowField
     private float cellDiameter;
     private Vector3 cellHalfExtents;
 
+    /// <summary>
+    /// Constructor of a flowfield being centered at the specified position
+    /// </summary>
+    /// <param name="_centerPosition"></param>
+    /// <param name="_cellRadius"></param>
+    /// <param name="_gridSize"></param>
+    public FlowField(Vector3 _centerPosition, float _cellRadius, Vector2Int _gridSize)
+    {
+        cellRadius = _cellRadius;
+        cellDiameter = cellRadius * 2f;
+        cellHalfExtents = Vector3.one * cellRadius;
+        gridSize = _gridSize;
+
+        moveDirection = Vector2.one;
+        startPosition = _centerPosition - new Vector3(gridSize.x, 0, gridSize.y) * cellRadius;
+    }
 
     /// <summary>
     /// Constructor of a flowfield at a specific position with a specific direction
@@ -34,8 +50,58 @@ public class FlowField
         cellHalfExtents = Vector3.one * cellRadius;
         gridSize = _gridSize;
 
-        startPosition = _curPosition;
         moveDirection = _moveDir.normalized;
+        if(Vector2.Dot(moveDirection, Vector2.left) > 0.8f)
+        {
+            if(moveDirection.y < 0)
+            {
+                startPosition = _curPosition + Vector3.forward * cellDiameter * gridSize.y / 2;
+            }
+            else
+            {
+                startPosition = _curPosition - Vector3.forward * cellDiameter * gridSize.y / 2;
+            }
+            startPosition += Vector3.right * cellDiameter * gridSize.x / 10;
+        }
+        else if(Vector2.Dot(moveDirection, Vector2.right) > 0.8f)
+        {
+            if (moveDirection.y < 0)
+            {
+                startPosition = _curPosition + Vector3.forward * cellDiameter * gridSize.y / 2;
+            }
+            else
+            {
+                startPosition = _curPosition + Vector3.forward * cellDiameter * gridSize.y / 2;
+            }
+            startPosition += Vector3.left * cellDiameter * gridSize.x / 10;
+        }
+        else if(Vector2.Dot(moveDirection, Vector2.up) > 0.8f)
+        {
+            if (moveDirection.x < 0)
+            {
+                startPosition = _curPosition + Vector3.right * cellDiameter * gridSize.x / 2;
+            }
+            else
+            {
+                startPosition = _curPosition - Vector3.right * cellDiameter * gridSize.x / 2;
+            }
+            startPosition += Vector3.back * cellDiameter * gridSize.y / 10;
+        }
+        else if (Vector2.Dot(moveDirection, Vector2.down) > 0.8f)
+        {
+            if (moveDirection.x < 0)
+            {
+                startPosition = _curPosition + Vector3.right * cellDiameter * gridSize.x / 2;
+            }
+            else
+            {
+                startPosition = _curPosition - Vector3.right * cellDiameter * gridSize.x / 2;
+            }
+            startPosition += Vector3.forward * cellDiameter * gridSize.y / 10;
+        }
+        else { startPosition = _curPosition; }
+        
+
     }
 
     /// <summary>
@@ -62,7 +128,7 @@ public class FlowField
     /// </summary>
     public void CreateCostField()
     {
-        LayerMask terrainMask = LayerMask.GetMask(Tags.Impassible_Terrain, Tags.Rough_Terrain, Tags.Selectable);
+        LayerMask terrainMask = LayerMask.GetMask(Tags.Impassible_Terrain, Tags.Rough_Terrain, Tags.Selectable, Tags.Obstacle);
         foreach (Cell cell in grid)
         {
             //Check for colliders that identify the property of the terrain at the cell's world position. Here is Impassible OR Rough
@@ -76,10 +142,10 @@ public class FlowField
                     cell.IncreaseCost(255);
                     continue;
                 }
-                else if(!hasIncreased && hit.gameObject.layer == LayerMask.NameToLayer(Tags.Rough_Terrain))
+                else if (hit.gameObject.layer == LayerMask.NameToLayer(Tags.Obstacle))
                 {
-                    cell.IncreaseCost(3);
-                    hasIncreased = true;
+                    cell.IncreaseCost(255);
+                    break;
                 }
                 else if (hit.gameObject.layer == LayerMask.NameToLayer(Tags.Selectable))
                 {
@@ -88,6 +154,11 @@ public class FlowField
                         cell.IncreaseCost(255);
                         break;
                     }
+                }
+                else if (!hasIncreased && hit.gameObject.layer == LayerMask.NameToLayer(Tags.Rough_Terrain))
+                {
+                    cell.IncreaseCost(3);
+                    hasIncreased = true;
                 }
             }
         }
@@ -115,12 +186,17 @@ public class FlowField
             List<Cell> curNeighbors = GetNeighborCells(curCell.gridPosition, GridDirection.CardinalDirections);
             foreach(Cell curNeighbor in curNeighbors)
             {
-                if(curNeighbor.cost == byte.MaxValue) { continue; }
-                if(curNeighbor.cost + curCell.bestCost < curNeighbor.bestCost)
+                if(curNeighbor.cost == byte.MaxValue && curNeighbor.bestCostIsCalculated == false)
+                {
+                    curNeighbor.bestCostIsCalculated = true;
+                }
+                if(curNeighbor.cost + curCell.bestCost < curNeighbor.bestCost && curNeighbor.bestCostIsCalculated == false)
                 {
                     curNeighbor.bestCost = (ushort)(curNeighbor.cost + curCell.bestCost);
+                    curNeighbor.bestCostIsCalculated = true;
                     cellsToCheck.Enqueue(curNeighbor);
                 }
+
             }
         }
     }

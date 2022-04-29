@@ -164,7 +164,7 @@ public class CommandSystem
         if (_group == null) { return; }
 
         // Check if there is any impassible obstacles in the way to account for an offset in the move position (the obstacle's size)
-        Collider[] colliders = Physics.OverlapBox(_destinationPosition, Vector3.one + Vector3.up * 1000, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Impassible_Terrain), QueryTriggerInteraction.Ignore);
+        Collider[] colliders = Physics.OverlapBox(_destinationPosition, Vector3.one / 10 + Vector3.up * 1000, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Obstacle), QueryTriggerInteraction.Ignore);
         if (colliders.Length == 0)
         {
             Debug.Log($"Move Towards {_destinationPosition}");
@@ -206,7 +206,20 @@ public class CommandSystem
             }
             else
             {
-                Debug.Log("Cant Move There!");
+                Debug.Log($"Move Towards {_destinationPosition}");
+                for (int index = 0; index < _group.entityList.Count; index++)
+                {
+                    if (_group.entityList[index] == null) { continue; }
+
+                    dynamic newAction = _group.entityList[index].ReturnNewAction();
+                    newAction.InitializeType(Tags.MoveTowardsInt);
+                    newAction.InitializeGroup(_group);
+                    newAction.InitializeMoveTowards(_group.entityList[index].GetWorldPosition(), _destinationPosition);
+                    _group.actionList.Add(newAction);
+                    _group.entityList[index].GetActionController().EnqueueAction(newAction, _isInstant);
+                }
+
+                _group.StartUpdateGroup(true);
             }
         }
     }
@@ -223,7 +236,7 @@ public class CommandSystem
     {
         IEntity enemy = null;
 
-        Collider[] colliders = Physics.OverlapBox(_clickMousePosition, Vector3.one + Vector3.up * 100, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
+        Collider[] colliders = Physics.OverlapBox(_clickMousePosition, Vector3.one / 10 + Vector3.up * 100, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Selectable));
         foreach (Collider collider in colliders)
         {
             if (collider.gameObject.GetComponent<IEntity>().GetSelectionType() == IEntity.SelectionType.Selectable)
@@ -250,7 +263,7 @@ public class CommandSystem
     {
         IEntity entity = null;
 
-        Collider[] colliders = Physics.OverlapBox(_clickMousePosition, Vector3.one + Vector3.up * 100, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
+        Collider[] colliders = Physics.OverlapBox(_clickMousePosition, Vector3.one / 10 + Vector3.up * 100, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Selectable));
         foreach (Collider collider in colliders)
         {
             if (collider.gameObject.GetComponent<IEntity>().GetSelectionType() == IEntity.SelectionType.Selectable)
@@ -276,7 +289,7 @@ public class CommandSystem
     {
         IEntity entity = null;
 
-        Collider[] colliders = Physics.OverlapBox(_clickMousePosition, Vector3.one + Vector3.up * 100, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
+        Collider[] colliders = Physics.OverlapBox(_clickMousePosition, Vector3.one / 10 + Vector3.up * 100, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Selectable));
         foreach (Collider collider in colliders)
         {
             if (collider.gameObject.GetComponent<IEntity>().GetSelectionType() == IEntity.SelectionType.Selectable)
@@ -289,7 +302,24 @@ public class CommandSystem
         return entity;
     }
 
+    /// <summary>
+    /// English: Return an obstacle at the mouse position.
+    /// 日本語：マウスの位置にある障害物を返す。
+    /// </summary>
+    /// <param name="_clickMousePosition"></param>
+    /// <returns></returns>
+    public static IObstacle ReturnObstacleAtMouse(Vector3 _clickMousePosition)
+    {
+        IObstacle obstacle = null;
+        Collider[] colliders = Physics.OverlapBox(_clickMousePosition, Vector3.one / 10 + Vector3.up * 100, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Obstacle));
+        foreach (Collider collider in colliders)
+        {
+            obstacle = collider.gameObject.GetComponent<IObstacle>();
+            break;
+        }
 
+        return obstacle;
+    }
 
 
 }

@@ -15,6 +15,7 @@ public class Cell
     public byte cost;
     public ushort bestCost;
     public GridDirection bestDirection;
+    public bool bestCostIsCalculated;
 
     /// <summary>
     /// Constructor of a cell in the grid used by flowfield. The flowfield is controlled by GridController
@@ -31,6 +32,7 @@ public class Cell
         cost = 1;
         bestCost = ushort.MaxValue;
         bestDirection = GridDirection.None;
+        bestCostIsCalculated = false;
     }
 
     /// <summary>
