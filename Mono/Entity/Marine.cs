@@ -70,7 +70,7 @@ public class Marine : MonoBehaviour, IUnit
         vertices[3] = new Vector3(selectedCircleRadius, 0, -selectedCircleRadius);
 
         selectedCircle.GetComponent<LineRenderer>().SetPositions(vertices);
-        selectedCircleRadius = col.bounds.extents.magnitude;
+        selectedCircleRadius = Mathf.Sqrt(col.bounds.extents.x * col.bounds.extents.x + col.bounds.extents.z * col.bounds.extents.z);
 
         rb.velocity = Vector3.zero;
 

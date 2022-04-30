@@ -257,7 +257,7 @@ public class SelectSystem : MonoBehaviour
                 if (curSelectGroup.entityList.Count > 0)
                 {
                     curSelectGroup.ResetSelectGroup();
-                    IEntity enemyAtMouse = CommandSystem.ReturnEntityAtMouse(IEntity.RelationshipType.Enemy, hit.point);
+                    IEntity enemyAtMouse = CommandSystem.ReturnEntityAtWorldPosition(IEntity.RelationshipType.Enemy, hit.point);
                     if (enemyAtMouse == null)
                     {
                         bool isQueued = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
@@ -563,18 +563,21 @@ public class SelectSystem : MonoBehaviour
         Vector3 point4 = Camera.main.ViewportToWorldPoint(point4ViewPort);
 
         // Draw a box on the screen with 4 vertices in world spaces
-        Gizmos.DrawLine(point1, point3);
-        Gizmos.DrawLine(point3, point2);
-        Gizmos.DrawLine(point2, point4);
-        Gizmos.DrawLine(point4, point1);
+        //Gizmos.DrawLine(point1, point3);
+        //Gizmos.DrawLine(point3, point2);
+        //Gizmos.DrawLine(point2, point4);
+        //Gizmos.DrawLine(point4, point1);
 
         // Draw the box that would be used when select entities in world spaces
-        Gizmos.DrawLine(point1, point1 + Camera.main.transform.forward * 1000);
-        Gizmos.DrawLine(point2, point2 + Camera.main.transform.forward * 1000);
-        Gizmos.DrawLine(point3, point3 + Camera.main.transform.forward * 1000);
-        Gizmos.DrawLine(point4, point4 + Camera.main.transform.forward * 1000);
+        //Gizmos.DrawLine(point1, point1 + Camera.main.transform.forward * 100);
+        //Gizmos.DrawLine(point2, point2 + Camera.main.transform.forward * 100);
+        //Gizmos.DrawLine(point3, point3 + Camera.main.transform.forward * 100);
+        //Gizmos.DrawLine(point4, point4 + Camera.main.transform.forward * 100);
 
-
+        // Draw the current position on the ground pointed by the mouse from the camera
+        RaycastHit hit;
+        Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 1000, LayerMask.GetMask(Tags.Ground));
+        Gizmos.DrawLine(hit.point, hit.point + Vector3.up * 1000);
     }
 
 }

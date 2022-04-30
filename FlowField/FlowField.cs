@@ -29,6 +29,7 @@ public class FlowField
     /// <param name="_gridSize"></param>
     public FlowField(Vector3 _centerPosition, float _cellRadius, Vector2Int _gridSize)
     {
+        Debug.Log("FlowField constructed at center of " + _centerPosition);
         cellRadius = _cellRadius;
         cellDiameter = cellRadius * 2f;
         cellHalfExtents = Vector3.one * cellRadius;
@@ -45,12 +46,14 @@ public class FlowField
     /// <param name="_gridSize"></param>
     public FlowField(Vector3 _curPosition, Vector2 _moveDir, float _cellRadius, Vector2Int _gridSize)
     {
+        Debug.Log("FlowField constructed at " + _curPosition + " with direction " + _moveDir.normalized);
         cellRadius = _cellRadius;
         cellDiameter = cellRadius * 2f;
         cellHalfExtents = Vector3.one * cellRadius;
         gridSize = _gridSize;
 
         moveDirection = _moveDir.normalized;
+        /*
         if(Vector2.Dot(moveDirection, Vector2.left) > 0.8f)
         {
             if(moveDirection.y < 0)
@@ -100,7 +103,8 @@ public class FlowField
             startPosition += Vector3.forward * cellDiameter * gridSize.y / 10;
         }
         else { startPosition = _curPosition; }
-        
+        */
+        startPosition = _curPosition;
 
     }
 

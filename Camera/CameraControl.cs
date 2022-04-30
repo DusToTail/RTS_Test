@@ -44,7 +44,7 @@ public class CameraControl : MonoBehaviour
         //topLeft = ground.GetChild(2);
         topRight = ground.GetChild(3);
 
-        LookAtTarget(offset);
+        ApplyOffset(offset);
     }
 
     private void LateUpdate()
@@ -141,15 +141,14 @@ public class CameraControl : MonoBehaviour
     }
 
     /// <summary>
-    /// Make the transform rotation so that it looks at the target
+    /// Apply Offset to the camera from the target
     /// </summary>
     /// <param name="_offset"></param>
-    private void LookAtTarget(Vector2 _offset)
+    private void ApplyOffset(Vector2 _offset)
     {
         if(target == null) { return; }
         transform.position = new Vector3(target.position.x, transform.position.y, target.position.z);
         transform.position += new Vector3(_offset.x, 0, _offset.y);
-        transform.LookAt(target);
     }
 
 }

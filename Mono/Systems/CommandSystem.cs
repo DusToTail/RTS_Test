@@ -20,7 +20,7 @@ public class CommandSystem
     /// <param name="_isInstant"></param>
     public static void AttackCommand(Vector3 _clickMousePosition, SelectGroup _group, bool _isInstant)
     {
-        IEntity target = ReturnEntityAtMouse(_clickMousePosition);
+        IEntity target = ReturnEntityAtWorldPosition(_clickMousePosition);
         if(target != null) 
         {
             Debug.Log($"Try to Attack {target.GetTransform().name}");
@@ -105,19 +105,24 @@ public class CommandSystem
         if(_group == null) { return; }
 
         // Check if there is any impassible obstacles in the way to account for an offset in the move position (the obstacle's size)
-        Collider[] colliders = Physics.OverlapBox(_moveMousePosition, Vector3.one + Vector3.up * 1000, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Impassible_Terrain), QueryTriggerInteraction.Ignore);
-        if (colliders.Length == 0)
+        IEntity entity = ReturnEntityAtWorldPosition(IEntity.EntityType.Structure, _moveMousePosition);
+        if (entity == null)
         {
             Debug.Log($"Simple Patrol Towards {_moveMousePosition}");
             for (int index = 0; index < _group.entityList.Count; index++)
             {
+                //Vector3 dir = _group.entityList[index].GetWorldPosition() - _group.entityList[index].GetWorldPosition();
+                //Vector3 offset = new Vector3(-dir.x, 0, -dir.z).normalized * _group.entityList[index].GetSelectedCircleRadius();
+                Vector3[] moveWaypoints = new Vector3[2];
+                moveWaypoints[0] = _moveMousePosition;
+                moveWaypoints[1] = _group.entityList[index].GetWorldPosition();
+
                 dynamic newAction = _group.entityList[index].ReturnNewAction();
                 newAction.InitializeType(Tags.PatrolInt);
                 newAction.InitializeGroup(_group);
-                newAction.InitializePatrol(_group.entityList[index].GetWorldPosition(), _moveMousePosition, _group.entityList[index].GetWorldPosition());
+                newAction.InitializePatrol(_group.entityList[index].GetWorldPosition(), moveWaypoints);
 
                 _group.actionList.Add(newAction);
-
                 _group.entityList[index].GetActionController().EnqueueAction(newAction, _isInstant);
             }
 
@@ -125,33 +130,25 @@ public class CommandSystem
         }
         else
         {
-            IEntity entity = ReturnEntityAtMouse(_moveMousePosition);
-            if (entity != null)
+            Debug.Log($"Move Towards {entity.GetTransform().gameObject.name}");
+            for (int index = 0; index < _group.entityList.Count; index++)
             {
-                Debug.Log($"Move Towards {entity.GetTransform().gameObject.name}");
-                for (int index = 0; index < _group.entityList.Count; index++)
-                {
-                    Vector3 dir = entity.GetWorldPosition() - _group.entityList[index].GetWorldPosition();
-                    Vector3 offset = new Vector3(-dir.x, 0, -dir.z).normalized * entity.GetSelectedCircleRadius();
-                    Vector3[] moveWaypoints = new Vector3[2];
-                    moveWaypoints[0] = _moveMousePosition + offset;
-                    moveWaypoints[1] = _group.entityList[index].GetWorldPosition();
+                Vector3 dir = entity.GetWorldPosition() - _group.entityList[index].GetWorldPosition();
+                Vector3 offset = new Vector3(-dir.x, 0, -dir.z).normalized * entity.GetSelectedCircleRadius();
+                Vector3[] moveWaypoints = new Vector3[2];
+                moveWaypoints[0] = _moveMousePosition + offset;
+                moveWaypoints[1] = _group.entityList[index].GetWorldPosition();
 
-                    dynamic newAction = _group.entityList[index].ReturnNewAction();
-                    newAction.InitializeType(Tags.PatrolInt);
-                    newAction.InitializeGroup(_group);
-                    newAction.InitializePatrol(_group.entityList[index].GetWorldPosition(), moveWaypoints);
+                dynamic newAction = _group.entityList[index].ReturnNewAction();
+                newAction.InitializeType(Tags.PatrolInt);
+                newAction.InitializeGroup(_group);
+                newAction.InitializePatrol(_group.entityList[index].GetWorldPosition(), moveWaypoints);
 
-                    _group.actionList.Add(newAction);
-                    _group.entityList[index].GetActionController().EnqueueAction(newAction, _isInstant);
-                }
-
-                _group.StartUpdateGroup(true);
+                _group.actionList.Add(newAction);
+                _group.entityList[index].GetActionController().EnqueueAction(newAction, _isInstant);
             }
-            else
-            {
-                Debug.Log("Cant Move There!");
-            }
+
+            _group.StartUpdateGroup(true);
         }
     }
 
@@ -164,8 +161,8 @@ public class CommandSystem
         if (_group == null) { return; }
 
         // Check if there is any impassible obstacles in the way to account for an offset in the move position (the obstacle's size)
-        Collider[] colliders = Physics.OverlapBox(_destinationPosition, Vector3.one / 10 + Vector3.up * 1000, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Obstacle), QueryTriggerInteraction.Ignore);
-        if (colliders.Length == 0)
+        IEntity entity = ReturnEntityAtWorldPosition(IEntity.EntityType.Structure, _destinationPosition);
+        if (entity == null)
         {
             Debug.Log($"Move Towards {_destinationPosition}");
             for (int index = 0; index < _group.entityList.Count; index++)
@@ -176,67 +173,49 @@ public class CommandSystem
                 newAction.InitializeType(Tags.MoveTowardsInt);
                 newAction.InitializeGroup(_group);
                 newAction.InitializeMoveTowards(_group.entityList[index].GetWorldPosition(), _destinationPosition);
+
                 _group.actionList.Add(newAction);
                 _group.entityList[index].GetActionController().EnqueueAction(newAction, _isInstant);
             }
             
             _group.StartUpdateGroup(true);
+            return;
         }
         else
         {
-            IEntity entity = ReturnEntityAtMouse(_destinationPosition);
-            if(entity != null)
+            Debug.Log($"Move Towards {entity.GetTransform().gameObject.name}");
+            for (int index = 0; index < _group.entityList.Count; index++)
             {
-                Debug.Log($"Move Towards {entity.GetTransform().gameObject.name}");
-                for (int index = 0; index < _group.entityList.Count; index++)
-                {
-                    Vector3 dir = entity.GetWorldPosition() - _group.entityList[index].GetWorldPosition();
-                    Vector3 offset = new Vector3(-dir.x, 0, -dir.z).normalized * entity.GetSelectedCircleRadius();
+                Vector3 dir = entity.GetWorldPosition() - _group.entityList[index].GetWorldPosition();
+                Vector3 offset = new Vector3(-dir.x, 0, -dir.z).normalized * entity.GetSelectedCircleRadius();
 
-                    dynamic newAction = _group.entityList[index].ReturnNewAction();
-                    newAction.InitializeType(Tags.MoveTowardsInt);
-                    newAction.InitializeGroup(_group);
-                    newAction.InitializeMoveTowards(_group.entityList[index].GetWorldPosition(), _destinationPosition + offset);
+                dynamic newAction = _group.entityList[index].ReturnNewAction();
+                newAction.InitializeType(Tags.MoveTowardsInt);
+                newAction.InitializeGroup(_group);
+                newAction.InitializeMoveTowards(_group.entityList[index].GetWorldPosition(), _destinationPosition + offset);
 
-                    _group.actionList.Add(newAction);
-                    _group.entityList[index].GetActionController().EnqueueAction(newAction, _isInstant);
-                }
-
-                _group.StartUpdateGroup(true);
+                _group.actionList.Add(newAction);
+                _group.entityList[index].GetActionController().EnqueueAction(newAction, _isInstant);
             }
-            else
-            {
-                Debug.Log($"Move Towards {_destinationPosition}");
-                for (int index = 0; index < _group.entityList.Count; index++)
-                {
-                    if (_group.entityList[index] == null) { continue; }
 
-                    dynamic newAction = _group.entityList[index].ReturnNewAction();
-                    newAction.InitializeType(Tags.MoveTowardsInt);
-                    newAction.InitializeGroup(_group);
-                    newAction.InitializeMoveTowards(_group.entityList[index].GetWorldPosition(), _destinationPosition);
-                    _group.actionList.Add(newAction);
-                    _group.entityList[index].GetActionController().EnqueueAction(newAction, _isInstant);
-                }
-
-                _group.StartUpdateGroup(true);
-            }
+            _group.StartUpdateGroup(true);
+            return;
         }
     }
 
 
     /// <summary>
-    /// English: Return an entity with specified relationship type at the mouse position.
-    /// 日本語：マウスの位置にあり、指定した関係性を持つEntityを返す。
+    /// English: Return an entity with specified relationship type at the world position.
+    /// 日本語：ワールド位置にあり、指定した関係性を持つEntityを返す。
     /// </summary>
     /// <param name="_relationshipType"></param>
-    /// <param name="_clickMousePosition"></param>
+    /// <param name="_worldPosition"></param>
     /// <returns></returns>
-    public static IEntity ReturnEntityAtMouse(IEntity.RelationshipType _relationshipType, Vector3 _clickMousePosition)
+    public static IEntity ReturnEntityAtWorldPosition(IEntity.RelationshipType _relationshipType, Vector3 _worldPosition)
     {
         IEntity enemy = null;
 
-        Collider[] colliders = Physics.OverlapBox(_clickMousePosition, Vector3.one / 10 + Vector3.up * 100, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Selectable));
+        Collider[] colliders = Physics.OverlapBox(_worldPosition, Vector3.one + Vector3.up * 100, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
         foreach (Collider collider in colliders)
         {
             if (collider.gameObject.GetComponent<IEntity>().GetSelectionType() == IEntity.SelectionType.Selectable)
@@ -253,21 +232,21 @@ public class CommandSystem
     }
 
     /// <summary>
-    /// English: Return an entity with specified entity type at the mouse position.
-    /// 日本語：マウスの位置にあり、指定したentityタイプを持つEntityを返す。
+    /// English: Return an entity with specified entity type at the world position.
+    /// 日本語：ワールド位置にあり、指定したentityタイプを持つEntityを返す。
     /// </summary>
     /// <param name="_entityType"></param>
-    /// <param name="_clickMousePosition"></param>
+    /// <param name="_worldPosition"></param>
     /// <returns></returns>
-    public static IEntity ReturnEntityAtMouse(IEntity.EntityType _entityType, Vector3 _clickMousePosition)
+    public static IEntity ReturnEntityAtWorldPosition(IEntity.EntityType _entityType, Vector3 _worldPosition)
     {
         IEntity entity = null;
-
-        Collider[] colliders = Physics.OverlapBox(_clickMousePosition, Vector3.one / 10 + Vector3.up * 100, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Selectable));
+        Collider[] colliders = Physics.OverlapBox(_worldPosition, Vector3.one + Vector3.up * 100, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
         foreach (Collider collider in colliders)
         {
             if (collider.gameObject.GetComponent<IEntity>().GetSelectionType() == IEntity.SelectionType.Selectable)
             {
+                Debug.Log("Structure found");
                 if (collider.gameObject.GetComponent<IEntity>().GetEntityType() == _entityType)
                 {
                     entity = collider.gameObject.GetComponent<IEntity>();
@@ -280,16 +259,15 @@ public class CommandSystem
     }
 
     /// <summary>
-    /// English: Return an entity at the mouse position.
+    /// English: Return an entity at the world position.
     /// 日本語：マウスの位置にあるEntityを返す。
     /// </summary>
-    /// <param name="_clickMousePosition"></param>
+    /// <param name="_worldPosition"></param>
     /// <returns></returns>
-    public static IEntity ReturnEntityAtMouse(Vector3 _clickMousePosition)
+    public static IEntity ReturnEntityAtWorldPosition(Vector3 _worldPosition)
     {
         IEntity entity = null;
-
-        Collider[] colliders = Physics.OverlapBox(_clickMousePosition, Vector3.one / 10 + Vector3.up * 100, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Selectable));
+        Collider[] colliders = Physics.OverlapBox(_worldPosition, Vector3.one + Vector3.up * 100, Quaternion.identity, LayerMask.GetMask(Tags.Selectable));
         foreach (Collider collider in colliders)
         {
             if (collider.gameObject.GetComponent<IEntity>().GetSelectionType() == IEntity.SelectionType.Selectable)
@@ -303,18 +281,19 @@ public class CommandSystem
     }
 
     /// <summary>
-    /// English: Return an obstacle at the mouse position.
-    /// 日本語：マウスの位置にある障害物を返す。
+    /// English: Return an obstacle at world position.
+    /// 日本語：ワールド位置にある障害物を返す。
     /// </summary>
     /// <param name="_clickMousePosition"></param>
     /// <returns></returns>
-    public static IObstacle ReturnObstacleAtMouse(Vector3 _clickMousePosition)
+    public static IObstacle ReturnObstacleAtWorldPosition(Vector3 _worldPosition)
     {
         IObstacle obstacle = null;
-        Collider[] colliders = Physics.OverlapBox(_clickMousePosition, Vector3.one / 10 + Vector3.up * 100, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Obstacle));
+        Collider[] colliders = Physics.OverlapBox(_worldPosition, Vector3.one + Vector3.up * 100, Quaternion.identity, LayerMask.GetMask(Tags.Obstacle));
         foreach (Collider collider in colliders)
         {
             obstacle = collider.gameObject.GetComponent<IObstacle>();
+            Debug.Log(collider.gameObject.name);
             break;
         }
 

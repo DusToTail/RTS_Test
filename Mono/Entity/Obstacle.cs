@@ -18,6 +18,8 @@ public class Obstacle : MonoBehaviour, IObstacle
     private void Start()
     {
         cellRadius = FindObjectOfType<GridController>().cellRadius;
+        gridSize = new Vector2Int(Mathf.FloorToInt(gridSize.x / cellRadius), Mathf.FloorToInt(gridSize.y / cellRadius));
+
         startPosition = transform.position - new Vector3(gridSize.x, 0, gridSize.y) * cellRadius;
     }
 
