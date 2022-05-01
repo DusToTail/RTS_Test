@@ -35,6 +35,7 @@ public interface IEntity
         Structure
     }
 
+
     /// <summary>
     /// English: Return the selection type
     /// 日本語：選択可能のタイプを返す
@@ -85,6 +86,18 @@ public interface IEntity
     /// </summary>
     /// <returns></returns>
     public dynamic GetSelf();
+    /// <summary>
+    /// English: Return name
+    /// 日本語：名前を返す
+    /// </summary>
+    /// <returns></returns>
+    public string GetName();
+    /// <summary>
+    /// English: Return description
+    /// 日本語：ディスクリプションを返す
+    /// </summary>
+    /// <returns></returns>
+    public string GetDescription();
     /// <summary>
     /// English: Return its own (Unit/Structure)ActionController component (run-time type)
     /// 日本語：(Unit/Structure)の行動管理コンポーネントを返す（run-time タイプ）

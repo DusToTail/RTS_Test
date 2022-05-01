@@ -46,7 +46,7 @@ public class MarineAction : IMarineAction
     /// </summary>
     public MarineAction()
     {
-        Debug.Log("Marine Action Created");
+        //Debug.Log("Marine Action Created");
         type = Type.None;
         curTarget = null;
         attackMousePosition = Vector3.zero;
@@ -72,7 +72,7 @@ public class MarineAction : IMarineAction
 
         float destinationDistance = (_rb.position - attackMousePosition).magnitude;
         IEntity closestEnemy = ReturnNearbyEnemy(_rb, _visionRange);
-        if (destinationDistance < cellRadius * 2 * 1.4 && closestEnemy == null && type == Type.AttackMove)
+        if (destinationDistance < cellRadius * 2 && closestEnemy == null && type == Type.AttackMove)
         {
             Debug.Log("Attack move reached destination and no enemy nearby");
             Debug.Log("Action is finished");
@@ -213,7 +213,7 @@ public class MarineAction : IMarineAction
         //Debug.Log(curWaypointIndex);
         float destinationDistance = new Vector3(_rb.position.x - moveWaypoints[curWaypointIndex].x, 0, _rb.position.z - moveWaypoints[curWaypointIndex].z).magnitude;
         //Debug.Log(destinationDistance);
-        if (destinationDistance < cellRadius * 2 * 1.4)
+        if (destinationDistance < cellRadius * 2)
         {
             if (curWaypointIndex == moveWaypoints.Length - 1)
                 curWaypointIndex = 0;
@@ -232,7 +232,7 @@ public class MarineAction : IMarineAction
         float cellDistance = (curFlowField.GetCellFromWorldPos(_rb.position).gridPosition - curFlowField.destinationCell.gridPosition).magnitude;
 
         //Debug.Log(destinationDistance);
-        if (destinationDistance < cellRadius * 2 * 1.4 && type == Type.MoveTowards)
+        if (destinationDistance < cellRadius * 2 && type == Type.MoveTowards)
         {
             Debug.Log("Action is finished");
             StopMoving(_rb);
@@ -241,12 +241,18 @@ public class MarineAction : IMarineAction
         }
         else if(cellDistance < 1)
         {
-            Vector2 dir = new Vector2(moveMousePosition.x - _rb.position.x, moveMousePosition.z - _rb.position.z).normalized;
+            Vector2 dir = new Vector2(moveMousePosition.x - curFlowField.destinationCell.worldPosition.x, moveMousePosition.z - curFlowField.destinationCell.worldPosition.z).normalized;
             float distance = cellRadius * 2 * ((gridSize.x < gridSize.y) ? gridSize.y : gridSize.x);
             if(destinationDistance < distance)
                 distance = destinationDistance;
-            Vector3 nextPosition = _rb.position + new Vector3(dir.x, 0, dir.y).normalized * distance;
 
+            Vector3 nextPosition = _rb.position;
+            for (int index = 0; index < distance / (cellRadius * 2); index++)
+            {
+                if (Utilities.ReturnObstacleAtWorldPosition(nextPosition) != null) 
+                    break;
+                nextPosition += new Vector3(dir.x, 0, dir.y).normalized * cellRadius * 2;
+            }
             // Check for entity at the position to initialize the approriate flowfield
             Vector3 selfBound = _rb.gameObject.GetComponent<Collider>().bounds.extents;
             RaycastHit hit;
@@ -416,7 +422,7 @@ public class MarineAction : IMarineAction
     {
         // Check for entity at the position to initialize the approriate flowfield
         moveWaypoints = _moveWaypoints;
-        IObstacle obstacle = CommandSystem.ReturnObstacleAtWorldPosition(moveWaypoints[0]);
+        IObstacle obstacle = Utilities.ReturnObstacleAtWorldPosition(moveWaypoints[0]);
         if (obstacle == null)
         {
             InitializeSelfFlowField(_curPosition, moveWaypoints[0]);
@@ -456,7 +462,7 @@ public class MarineAction : IMarineAction
     {
         // Check for entity at the position to initialize the approriate flowfield
         InitializeSelfFlowField(_curPosition, _attackMovePosition);
-        IObstacle obstacle = CommandSystem.ReturnObstacleAtWorldPosition(selfFlowField.destinationCell.worldPosition);
+        IObstacle obstacle = Utilities.ReturnObstacleAtWorldPosition(selfFlowField.destinationCell.worldPosition);
         if (obstacle == null)
         {
             Debug.Log("Updated current flowfield without obstacle");
@@ -480,11 +486,18 @@ public class MarineAction : IMarineAction
     /// <param name="_destinationPosition"></param>
     public void InitializeSelfFlowField(Vector3 _curPosition, Vector3 _destinationPosition)
     {
-        Vector2 dir = new Vector2(_destinationPosition.x - _curPosition.x, _destinationPosition.z - _curPosition.z);
-        selfFlowField = new FlowField(_curPosition, dir, cellRadius, gridSize);
+        Vector2 vector = new Vector2(_destinationPosition.x - _curPosition.x, _destinationPosition.z - _curPosition.z);
+        selfFlowField = new FlowField(_curPosition, vector, cellRadius, gridSize);
         selfFlowField.CreateGrid();
         selfFlowField.CreateCostField();
-        selfFlowField.CreateIntegrationField(selfFlowField.GetCellFromWorldPos(_destinationPosition));
+        Vector3 newDestinationPosition = _curPosition;
+        for(int index = 0; index < vector.magnitude / (cellRadius * 2); index++)
+        {
+            if (selfFlowField.GetCellFromWorldPos(newDestinationPosition).cost == byte.MaxValue)
+                break;
+            newDestinationPosition += new Vector3(vector.x, 0, vector.y).normalized * cellRadius * 2;
+        }
+        selfFlowField.CreateIntegrationField(selfFlowField.GetCellFromWorldPos(newDestinationPosition));
         selfFlowField.CreateFlowField();
 
         GridDebug.SetCurFlowField(selfFlowField);
@@ -500,31 +513,22 @@ public class MarineAction : IMarineAction
     public void InitializeSelfFlowField(Vector3 _curPosition, Vector3 _destinationPosition, IObstacle _obstacle)
     {
         Vector2 dir = new Vector2(_destinationPosition.x - _curPosition.x, _destinationPosition.z - _curPosition.z).normalized;
-        Vector3 newDestinationPosition = _curPosition;
-        if(CommandSystem.ReturnObstacleAtWorldPosition(_curPosition + new Vector3(dir.x, 0, dir.y) * cellRadius * 2) == null)
-        {
-            while (CommandSystem.ReturnObstacleAtWorldPosition(newDestinationPosition) == null)
-            {
-                Debug.DrawLine(newDestinationPosition, newDestinationPosition + Vector3.up * 10, Color.magenta, 10);
-                newDestinationPosition += new Vector3(dir.x, 0, dir.y) * cellRadius * 2;
-            }
-            newDestinationPosition -= new Vector3(dir.x, 0, dir.y) * cellRadius * 2;
-        }
-        else
-        {
-            newDestinationPosition = _curPosition + new Vector3(dir.x, 0, dir.y) * cellRadius * 2;
-            while (CommandSystem.ReturnObstacleAtWorldPosition(newDestinationPosition) != null)
-            {
-                Debug.DrawLine(newDestinationPosition, newDestinationPosition + Vector3.up * 10, Color.magenta, 10);
-                newDestinationPosition += new Vector3(dir.x, 0, dir.y) * cellRadius * 2;
-            }
-            newDestinationPosition += new Vector3(dir.x, 0, dir.y) * cellRadius * 2;
-        }
-
+        
 
         selfFlowField = new FlowField(_obstacle.GetWorldPosition(), cellRadius, _obstacle.GetObstacleGridSize() + gridSize);
         selfFlowField.CreateGrid();
         selfFlowField.CreateCostField();
+        Vector3 newDestinationPosition = _curPosition;
+        if (selfFlowField.GetCellFromWorldPos(newDestinationPosition + new Vector3(dir.x, 0, dir.y).normalized * cellRadius * 2).cost == byte.MaxValue)
+        {
+            float distance = Mathf.Sqrt(_obstacle.GetObstacleGridSize().x * _obstacle.GetObstacleGridSize().x + _obstacle.GetObstacleGridSize().y * _obstacle.GetObstacleGridSize().y);
+            newDestinationPosition += new Vector3(dir.x, 0, dir.y).normalized * distance * cellRadius * 2;
+        }
+        else
+        {
+            newDestinationPosition += new Vector3(dir.x, 0, dir.y).normalized * cellRadius * 2;
+        }
+
         selfFlowField.CreateIntegrationField(selfFlowField.GetCellFromWorldPos(newDestinationPosition));
         selfFlowField.CreateFlowField();
         GridDebug.SetCurFlowField(selfFlowField);

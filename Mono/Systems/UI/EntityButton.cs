@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// English: A class that allows the selection of an individual entity stored as a reference here and the shifting of the camera for focusing when clicked.
@@ -8,11 +9,27 @@ using UnityEngine;
 /// </summary>
 public class EntityButton : MonoBehaviour, IButton
 {
-    public IEntity entity;
-    public SelectSystem selectSystem;
-    public CameraControl cameraControl;
-    private Sprite image;
-    
+    public SelectManager selectManager;
+    public IEntity entity { get; private set; }
+
+    private void Awake()
+    {
+        entity = null;
+        GetComponent<Button>().onClick.AddListener(() => OnClick());
+    }
+
+    /// <summary>
+    /// English: Assign a new entity to the button
+    /// 日本語：新しいEntityを割り当てる。
+    /// </summary>
+    /// <param name="_entity"></param>
+    public void AssignEntity(IEntity _entity)
+    {
+        entity = _entity;
+        GetComponent<Image>().sprite = entity.GetPortrait();
+
+    }
+
     /// <summary>
     /// English: Clear the current SelectSystem class's current group's lists, add this entity for selection, and shift the camera to its position.
     /// 日本語：現在のSelectSystemクラスの現在使用しているグループのリストをクリアし、このEntityを加え（選択）、カメラをこのEntityの位置まで移動させる。
@@ -20,43 +37,32 @@ public class EntityButton : MonoBehaviour, IButton
     public void OnClick()
     {
         if(entity == null) { return; }
-        if(selectSystem == null) { return; }
+        if(selectManager == null) { return; }
 
         // Select the entity, move the camera to the entity position
-        selectSystem.RenderSelectedCircles(false);
-        selectSystem.ClearLists();
-        selectSystem.selectableList.Add(entity);
+        selectManager.RenderSelectedCircles(false);
+        selectManager.ClearLists();
+        selectManager.selectableList.Add(entity);
 
         GameObject selectGroup = new GameObject("Temp SelectGroup");
-        selectGroup.transform.SetParent(selectSystem.transform);
+        selectGroup.transform.SetParent(selectManager.transform);
         selectGroup.AddComponent<SelectGroup>();
 
-        for (int index = 0; index < selectSystem.structureList.Count; index++)
+        for (int index = 0; index < selectManager.structureList.Count; index++)
         {
-            selectGroup.GetComponent<SelectGroup>().entityList.Add(selectSystem.structureList[index]);
+            selectGroup.GetComponent<SelectGroup>().entityList.Add(selectManager.structureList[index]);
         }
-        for (int index = 0; index < selectSystem.unitList.Count; index++)
+        for (int index = 0; index < selectManager.unitList.Count; index++)
         {
-            selectGroup.GetComponent<SelectGroup>().entityList.Add(selectSystem.unitList[index]);
+            selectGroup.GetComponent<SelectGroup>().entityList.Add(selectManager.unitList[index]);
         }
 
-        selectSystem.curSelectGroup = selectGroup.GetComponent<SelectGroup>();
-        selectSystem.SetInputMode(SelectSystem.InputMode.None);
+        selectManager.curSelectGroup = selectGroup.GetComponent<SelectGroup>();
+        selectManager.SetInputMode(SelectManager.InputMode.None);
 
-        selectSystem.RenderSelectedCircles(true);
+        selectManager.RenderSelectedCircles(true);
 
-        if (cameraControl == null) { return; }
-        cameraControl.MoveCameraTo(entity.GetWorldPosition());
+        FindObjectOfType<CameraControl>().MoveCameraTo(entity.GetWorldPosition());
     }
 
-    /// <summary>
-    /// English: Return the sprite associated with the entity to be used in UI.
-    /// 日本語：UIで使用されるEntityのポートレートのSpriteを返す。
-    /// </summary>
-    /// <returns></returns>
-    public Sprite GetImage()
-    {
-        if(entity == null) { return null; }
-        return entity.GetPortrait();
-    }
 }

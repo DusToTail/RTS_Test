@@ -17,11 +17,17 @@ public class CommandCenter : MonoBehaviour, IStructure
 
     [Header("Basic Info")]
     [SerializeField]
+    protected string entityName;
+    [SerializeField]
+    protected string entityDescription;
+    [SerializeField]
     protected IEntity.SelectionType selectionType;
     [SerializeField]
     protected IEntity.RelationshipType relationshipType;
     [SerializeField]
     protected Sprite portrait;
+
+    
 
     [Header("Stats Info")]
     [SerializeField]
@@ -70,7 +76,7 @@ public class CommandCenter : MonoBehaviour, IStructure
 
         miniMapSelf.SetActive(true);
 
-        Debug.Log($"Structure {gameObject.name} Constructed");
+        //Debug.Log($"Structure {gameObject.name} Constructed");
     }
 
     public virtual void Start()
@@ -170,6 +176,9 @@ public class CommandCenter : MonoBehaviour, IStructure
         return GetComponent<StructureActionController>(); 
     }
     
+    public virtual string GetName() { return entityName; }
+    public virtual string GetDescription() { return entityDescription; }
+
 
     public virtual dynamic ReturnSelfType() { return typeof(CommandCenter); }
     public virtual dynamic ReturnNewAction() { return new CommandCenterAction(); }

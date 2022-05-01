@@ -32,7 +32,7 @@ public class SelectGroup : MonoBehaviour
     {
         // Check if all actions is finished to self destroy and save performance.
         // Only apply if it is not saved, and thus named "Temp SelectGroup" and is not the current SelectGroup in SelectSystem
-        if(this != FindObjectOfType<SelectSystem>().curSelectGroup) 
+        if(this != FindObjectOfType<SelectManager>().curSelectGroup) 
         {
             if(this.gameObject.name == "Temp SelectGroup")
             {
@@ -48,7 +48,7 @@ public class SelectGroup : MonoBehaviour
         // For groups that is not current SelectGroup in SelectSystem
         if (CheckIfAllActionsIsFinished() == true) 
         { 
-            if(this != FindObjectOfType<SelectSystem>().curSelectGroup)
+            if(this != FindObjectOfType<SelectManager>().curSelectGroup)
                 Destroy(gameObject); 
             else
                 ResetSelectGroup();

@@ -21,6 +21,10 @@ public class Marine : MonoBehaviour, IUnit
 
     [Header("Stats Info")]
     [SerializeField]
+    protected string entityName;
+    [SerializeField]
+    protected string entityDescription;
+    [SerializeField]
     protected float setHealth;
     [SerializeField]
     protected float setMovementSpeed;
@@ -76,7 +80,7 @@ public class Marine : MonoBehaviour, IUnit
 
         miniMapSelf.SetActive(true);
 
-        Debug.Log($"Unit {gameObject.name} Constructed");
+        //Debug.Log($"Unit {gameObject.name} Constructed");
     }
 
     public virtual void Start()
@@ -203,6 +207,10 @@ public class Marine : MonoBehaviour, IUnit
             return null;
         return GetComponent<UnitActionController>(); 
     }
+
+    public virtual string GetName() { return entityName; }
+    public virtual string GetDescription() { return entityDescription; }
+
     public virtual dynamic ReturnSelfType() { return typeof(Marine); }
     public virtual dynamic ReturnNewAction() { return new MarineAction(); }
     public virtual dynamic ReturnActionType() { return typeof(MarineAction); }

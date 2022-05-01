@@ -11,7 +11,7 @@ public class UIController : MonoBehaviour
 {
     [Header("Select System")]
     [SerializeField]
-    private SelectSystem selectSystem;
+    private SelectManager selectSystem;
 
     // *********** Bottom Left of the Screen  ************
     [Header("Left_Minimap")]
@@ -23,61 +23,45 @@ public class UIController : MonoBehaviour
     // **********  Bottom Middle of the Screen  ***********
     [Header("Middle_Panel")]
     [SerializeField]
-    private GameObject displayPanel;
-    [SerializeField]
-    private GameObject curGroupDisplayPanel;
+    private GameObject middlePanel;
 
-    [Header("Current Structure")]
+    [Header("Current Entity")]
     [SerializeField]
-    private GameObject curStructureDisplayPanel;
+    private GameObject entityDisplayPanel;
     [SerializeField]
-    private Image curStructurePortrait;
+    private EntityButton curEntityButton;
     [SerializeField]
-    private TMPro.TextMeshProUGUI curStructureHealthText;
+    private TMPro.TextMeshProUGUI curEntityHealthText;
     [SerializeField]
-    private TMPro.TextMeshProUGUI curStructureNameText;
-    [SerializeField]
-    private Image curStructureDefenseImage;
-    [SerializeField]
-    private Image curStructureAttackImage;
+    private TMPro.TextMeshProUGUI curEntityNameText;
 
-    [Header("Current Unit")]
     [SerializeField]
-    private GameObject curUnitDisplayPanel;
+    private GameObject curEntityStats;
     [SerializeField]
-    private Image curUnitPortrait;
+    private HoverInfo curUnitDefenseImage;
     [SerializeField]
-    private TMPro.TextMeshProUGUI curUnitHealthText;
-    [SerializeField]
-    private TMPro.TextMeshProUGUI curUnitNameText;
-    [SerializeField]
-    private Image curUnitDefenseImage;
-    [SerializeField]
-    private Image curUnitAttackImage;
+    private HoverInfo curUnitAttackImage;
 
-    [Header("Current Production")]
     [SerializeField]
-    private GameObject producerDisplayPanel;
-    [SerializeField]
-    private Image producerPortrait;
-    [SerializeField]
-    private TMPro.TextMeshProUGUI producerHealthText;
-    [SerializeField]
-    private TMPro.TextMeshProUGUI producerNameText;
+    private GameObject curEntityProduction;
     [SerializeField]
     private ProgressBar progressBar;
 
-    // **********  Bottom Middle of the Screen, on top of the display panel  ***********
+    [Header("Current Select Group")]
+    [SerializeField]
+    private GameObject groupDisplayPanel;
+
+    // **********  On top of Middle Panel  ***********
     [Header("Select Group Bar")]
     [SerializeField]
-    private GameObject[] selectGroupArray;
+    private GameObject[] selectGroupList;
 
     // **********  Bottom Right of the Screen  ***********
     [Header("Right_Command Panel")]
     [SerializeField]
     private GameObject commandPanel;
     [SerializeField]
-    private Image[] commandArray;
+    private IButton[] commandArray;
 
     // **********  Top Right of the Screen  ***********
     [Header("Resource Panel")]
@@ -89,36 +73,83 @@ public class UIController : MonoBehaviour
     private TMPro.TextMeshProUGUI ResourceThreeText;
 
 
-
-    public enum Panels
+    private void OnEnable()
     {
-        Minimap,
-        Resource,
-        StructureEntity,
-        UnitEntity,
-        Group,
-        Production,
-        Command,
-        SelectGroup
+        EventManager.OnSelectGroupAdded += UpdateSelectGroupPanel;
+        EventManager.OnCurrentGroupSelected += UpdateMiddlePanel;
+        EventManager.OnCurrentGroupCleared += ClearMiddlePanel;
+        EventManager.OnCurrentGroupSelected += UpdateCommandPanel;
+        EventManager.OnCurrentGroupCleared += ClearCommandPanel;
     }
 
-    private List<Panels> currentPanels;
-
+    private void OnDisable()
+    {
+        EventManager.OnSelectGroupAdded -= UpdateSelectGroupPanel;
+        EventManager.OnCurrentGroupSelected -= UpdateMiddlePanel;
+        EventManager.OnCurrentGroupCleared -= ClearMiddlePanel;
+        EventManager.OnCurrentGroupSelected -= UpdateCommandPanel;
+        EventManager.OnCurrentGroupCleared -= ClearCommandPanel;
+    }
 
     private void Awake()
     {
-        currentPanels = new List<Panels>();
+
     }
 
     private void Start()
     {
-        
+        miniMap.SetActive(true);
+        middlePanel.SetActive(true);
+
+        entityDisplayPanel.SetActive(false);
+        curEntityStats.SetActive(false );
+        curEntityProduction.SetActive(false );
+
+        groupDisplayPanel.SetActive(false);
+
+        for(int index = 0; index < selectGroupList.Length; index++)
+        {
+            selectGroupList[index].SetActive(false);
+        }
+
+        commandPanel.SetActive(true);
+
     }
 
     private void Update()
     {
+        UpdateResourcePanel();
+        UpdateCurrentEntityHealth();
         
     }
+
+    public void UpdateMiddlePanel(List<IEntity> _curGroupList)
+    {
+        if(_curGroupList == null) { return; }
+        if(_curGroupList.Count == 0) { return; }
+
+        entityDisplayPanel.SetActive(false);
+        groupDisplayPanel.SetActive(false);
+
+        if (_curGroupList.Count == 1)
+        {
+            UpdateEntityPanel(_curGroupList[0]);
+            entityDisplayPanel.SetActive(true);
+        }
+        else
+        {
+            UpdateCurrentGroupPanel(_curGroupList);
+            groupDisplayPanel.SetActive(true);
+        }
+
+    }
+
+    public void ClearMiddlePanel()
+    {
+
+    }
+
+    
 
 
     /// <summary>
@@ -130,22 +161,39 @@ public class UIController : MonoBehaviour
     {
         if(_entity == null) { return; }
 
-        curUnitPortrait.sprite = _entity.GetPortrait();
-        curUnitNameText.text = _entity.GetTransform().name;
+        curEntityButton.AssignEntity(_entity);
+        curEntityNameText.text = _entity.GetName();
 
-        if (_entity is IUnit unit)
+        // Check if Entity has progress-based action or not
+        if(_entity.ReturnActionType() is IOperating)
         {
-            curUnitHealthText.text = string.Format("{0}/{1}", unit.GetCurrentHealth(), unit.GetSetHealth());
-            curUnitDefenseImage.sprite = null;
-            curUnitAttackImage.sprite = null;
+            UpdateProduction(_entity);
         }
-        else if(_entity is IStructure structure)
+        else
         {
-            curStructureHealthText.text = string.Format("{0}/{1}", structure.GetCurrentHealth(), structure.GetSetHealth());
-            curStructureDefenseImage.sprite = null;
-            curStructureAttackImage.sprite = null;
+            UpdateStats(_entity);
+        }
+
+    }
+
+
+    public void UpdateCurrentEntityHealth()
+    {
+        if (curEntityButton.entity != null)
+        {
+            if (curEntityButton.entity is IUnit unit)
+            {
+                curEntityHealthText.text = string.Format("{0}/{1}", unit.GetCurrentHealth(), unit.GetSetHealth());
+
+            }
+            else if (curEntityButton.entity is IUnit structure)
+            {
+                curEntityHealthText.text = string.Format("{0}/{1}", structure.GetCurrentHealth(), structure.GetSetHealth());
+
+            }
         }
     }
+
 
     /// <summary>
     /// English: Update the Current Group Panel with information from the a list of entities parameter.
@@ -157,25 +205,37 @@ public class UIController : MonoBehaviour
         if(_curGroupList == null) { return; }
         if(_curGroupList.Count == 0) { return; }
 
-        int subGroupCount = curGroupDisplayPanel.transform.childCount;
-        int eachGroupEntityCount = curGroupDisplayPanel.transform.GetChild(0).transform.childCount;
-
-        float count = _curGroupList.Count / eachGroupEntityCount;
-        int buttonIndex = 0;
-        for (int groupIndex = 0; groupIndex < count; groupIndex++)
+        for (int groupIndex = 0; groupIndex < 4; groupIndex++)
         {
-            if (buttonIndex > _curGroupList.Count) { return; }
-            for (int index = buttonIndex; index < eachGroupEntityCount; index++)
+            for (int index = 0; index < 30; index++)
             {
-                if(buttonIndex > _curGroupList.Count) { return; }
-                Button button = curGroupDisplayPanel.transform.GetChild(groupIndex).transform.GetChild(index).GetComponent<Button>();
-                EntityButton entityButton = curGroupDisplayPanel.transform.GetChild(groupIndex).transform.GetChild(index).GetComponent<EntityButton>();
-                entityButton.entity = _curGroupList[index];
-                button.image.sprite = _curGroupList[index].GetPortrait();
-                button.onClick.AddListener(() => { entityButton.OnClick(); });
-                buttonIndex++;
+                groupDisplayPanel.transform.GetChild(groupIndex).transform.GetChild(1).transform.GetChild(index).gameObject.SetActive(false);
             }
+        }
 
+        int entityIndex = 0;
+        for (int groupIndex = 0; groupIndex < 4; groupIndex++)
+        {
+            for (int index = 0; index < 30; index++)
+            {
+                if(entityIndex > _curGroupList.Count - 1) { break; }
+                EntityButton entityButton = groupDisplayPanel.transform.GetChild(groupIndex).transform.GetChild(1).transform.GetChild(index).GetComponent<EntityButton>();
+                groupDisplayPanel.transform.GetChild(groupIndex).transform.GetChild(1).transform.GetChild(index).gameObject.SetActive(true);
+                entityButton.AssignEntity(_curGroupList[entityIndex]);
+                entityIndex++;
+            }
+        }
+
+    }
+
+    public void ClearCurrentGroupPanel()
+    {
+        for (int groupIndex = 0; groupIndex < 4; groupIndex++)
+        {
+            for (int index = 0; index < 30; index++)
+            {
+                groupDisplayPanel.transform.GetChild(groupIndex).transform.GetChild(1).transform.GetChild(index).gameObject.SetActive(false);
+            }
         }
     }
 
@@ -184,32 +244,39 @@ public class UIController : MonoBehaviour
     /// 日本語：entityのパラメータからの情報で、現在選んでいるEntityのプロダクション（進捗など）のパネルを更新する。
     /// </summary>
     /// <param name="_entity"></param>
-    public void UpdateProductionPanel(IEntity _entity)
+    public void UpdateProduction(IEntity _entity)
     {
         if(_entity == null) { return; }
-        producerPortrait.sprite = _entity.GetPortrait();
 
-        if(_entity is IUnit unit)
-        {
-            producerHealthText.text = string.Format("{0}/{1}", unit.GetCurrentHealth(), unit.GetSetHealth());
-        }
-        else if(_entity is IStructure structure)
-        {
-            producerHealthText.text = string.Format("{0}/{1}", structure.GetCurrentHealth(), structure.GetSetHealth());
-        }
+    }
 
-        if (_entity.GetSelf() is IProduce produce)
+    public void UpdateStats(IEntity _entity)
+    {
+
+    }
+
+    public void UpdateSelectGroupPanel(int index)
+    {
+
+    }
+
+    public void UpdateCommandPanel(List<IEntity> _curGroupList)
+    {
+        if (_curGroupList == null) { return; }
+        if (_curGroupList.Count == 0) { return; }
+
+        if (_curGroupList.Count == 1)
         {
-            progressBar.produce = produce;
         }
         else
         {
-            UpdateEntityPanel(_entity);
         }
-
-        
     }
 
+    public void ClearCommandPanel()
+    {
+
+    }
     public void UpdateResourcePanel()
     {
 
