@@ -165,9 +165,12 @@ public class UIController : MonoBehaviour
         curEntityNameText.text = _entity.GetName();
 
         // Check if Entity has progress-based action or not
-        if(_entity.ReturnActionType() is IOperating)
+        if(_entity.GetTransform().GetComponent<ProductionProcessor>() != null)
         {
-            UpdateProduction(_entity);
+            if(_entity.GetTransform().GetComponent<ProductionProcessor>().curProduction.isFinished)
+                UpdateStats(_entity);
+            else
+                UpdateProduction(_entity);
         }
         else
         {
@@ -181,15 +184,18 @@ public class UIController : MonoBehaviour
     {
         if (curEntityButton.entity != null)
         {
-            if (curEntityButton.entity is IUnit unit)
+            if(curEntityButton.entity.GetSelf() != null)
             {
-                curEntityHealthText.text = string.Format("{0}/{1}", unit.GetCurrentHealth(), unit.GetSetHealth());
-
+                Health curEntityHealth = curEntityButton.entity.GetTransform().GetComponent<Health>();
+                if (curEntityHealth != null)
+                {
+                    curEntityHealthText.text = string.Format("{0}/{1}", curEntityHealth.GetCurrentHealth(), curEntityHealth.GetMaxHealth());
+                }
             }
-            else if (curEntityButton.entity is IUnit structure)
+            else
             {
-                curEntityHealthText.text = string.Format("{0}/{1}", structure.GetCurrentHealth(), structure.GetSetHealth());
-
+                if (entityDisplayPanel.activeSelf)
+                    entityDisplayPanel.SetActive(false);
             }
         }
     }

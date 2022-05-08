@@ -10,7 +10,7 @@ using UnityEngine.UI;
 public class ProgressBar : MonoBehaviour
 {
     public Slider slider;
-    public IProduce produce;
+    public IBuild produce;
 
     // Update is called once per frame
     void Update()

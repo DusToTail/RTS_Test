@@ -29,7 +29,7 @@ public class FlowField
     /// <param name="_gridSize"></param>
     public FlowField(Vector3 _centerPosition, float _cellRadius, Vector2Int _gridSize)
     {
-        Debug.Log("FlowField constructed at center of " + _centerPosition);
+        //Debug.Log("FlowField constructed at center of " + _centerPosition);
         cellRadius = _cellRadius;
         cellDiameter = cellRadius * 2f;
         cellHalfExtents = Vector3.one * cellRadius;
@@ -46,7 +46,7 @@ public class FlowField
     /// <param name="_gridSize"></param>
     public FlowField(Vector3 _curPosition, Vector2 _moveDir, float _cellRadius, Vector2Int _gridSize)
     {
-        Debug.Log("FlowField constructed at " + _curPosition + " with direction " + _moveDir.normalized);
+        //Debug.Log("FlowField constructed at " + _curPosition + " with direction " + _moveDir.normalized);
         cellRadius = _cellRadius;
         cellDiameter = cellRadius * 2f;
         cellHalfExtents = Vector3.one * cellRadius;
@@ -104,7 +104,7 @@ public class FlowField
         }
         else { startPosition = _curPosition; }
         */
-        startPosition = _curPosition;
+        startPosition = _curPosition - new Vector3(moveDirection.x, 0 ,moveDirection.y) * cellDiameter;
 
     }
 
@@ -151,13 +151,10 @@ public class FlowField
                     cell.IncreaseCost(255);
                     break;
                 }
-                else if (hit.gameObject.layer == LayerMask.NameToLayer(Tags.Selectable))
+                else if (hit.gameObject.GetComponent<IObstacle>() != null)
                 {
-                    if (hit.gameObject.GetComponent<IEntity>().GetEntityType() == IEntity.EntityType.Structure)
-                    {
-                        cell.IncreaseCost(255);
-                        break;
-                    }
+                    cell.IncreaseCost(255);
+                    break;
                 }
                 else if (!hasIncreased && hit.gameObject.layer == LayerMask.NameToLayer(Tags.Rough_Terrain))
                 {
@@ -221,7 +218,8 @@ public class FlowField
                 if(curNeighbor.bestCost < bestCost)
                 {
                     bestCost = curNeighbor.bestCost;
-                    Vector3 dirV3 = (curNeighbor.worldPosition - curCell.worldPosition) / cellDiameter;
+                    Vector3 dirV3 = (curNeighbor.worldPosition - curCell.worldPosition);
+                    dirV3 = new Vector3(Mathf.Clamp(dirV3.x, -cellDiameter, cellDiameter), 0, Mathf.Clamp(dirV3.z, -cellDiameter, cellDiameter)) / cellDiameter;
                     Vector2Int dir = new Vector2Int(Mathf.FloorToInt(dirV3.x), Mathf.FloorToInt(dirV3.z));
                     curCell.bestDirection = GridDirection.GetDirectionFromV2I(dir);
                 }
@@ -266,18 +264,15 @@ public class FlowField
     }
 
     /// <summary>
-    /// Return the world position of a cell from the grid
-    /// Note: this grid system only work of positions with positive values on each axis.
+    /// Return the cell from the world position in the grid
     /// </summary>
     /// <param name="worldPos"></param>
     /// <returns></returns>
     public Cell GetCellFromWorldPos(Vector3 worldPos)
     {
-        float percentX = Mathf.Abs(worldPos.x - startPosition.x) / (gridSize.x * cellDiameter);
-        float percentY = Mathf.Abs(worldPos.z - startPosition.z) / (gridSize.y * cellDiameter);
+        float percentX = Mathf.Clamp01((worldPos.x - startPosition.x) * Mathf.Sign(moveDirection.x) / (gridSize.x * cellDiameter));
+        float percentY = Mathf.Clamp01((worldPos.z - startPosition.z) * Mathf.Sign(moveDirection.y) / (gridSize.y * cellDiameter));
 
-        percentX = Mathf.Clamp01(percentX);
-        percentY = Mathf.Clamp01(percentY);
 
         int x = Mathf.Clamp(Mathf.FloorToInt(gridSize.x * percentX), 0, gridSize.x - 1);
         int y = Mathf.Clamp(Mathf.FloorToInt(gridSize.y * percentY), 0, gridSize.y - 1);

@@ -10,6 +10,7 @@ using UnityEngine.UI;
 public class EntityButton : MonoBehaviour, IButton
 {
     public SelectManager selectManager;
+    public CommandManager commandManager;
     public IEntity entity { get; private set; }
 
     private void Awake()
@@ -58,11 +59,11 @@ public class EntityButton : MonoBehaviour, IButton
         }
 
         selectManager.curSelectGroup = selectGroup.GetComponent<SelectGroup>();
-        selectManager.SetInputMode(SelectManager.InputMode.None);
+        commandManager.SetCommandMode(CommandManager.CommandInt.None);
 
         selectManager.RenderSelectedCircles(true);
 
-        FindObjectOfType<CameraControl>().MoveCameraTo(entity.GetWorldPosition());
+        FindObjectOfType<CameraController>().MoveCameraTo(entity.GetWorldPosition());
     }
 
 }

@@ -13,23 +13,18 @@ using UnityEngine.UI;
 /// </summary>
 public class SelectManager : MonoBehaviour
 {
+    [SerializeField]
+    private int playerIndex;
+
     // Current selectable entities inside the currently selected group
     public List<IEntity> selectableList { get; set; } // ALL
-    public List<IUnit> unitList { get; set; } // Only Unit
-    public List<IStructure> structureList { get; set; } // Only Structure
+    public List<IEntity> unitList { get; set; } // Only Unit
+    public List<IEntity> structureList { get; set; } // Only Structure
 
     public List<SelectGroup> selectGroupList { get; set; } // List of select group saved by the player
     public SelectGroup curSelectGroup { get; set; } // currently selected group's SelectGroup class
     
-    // Input mode when using keyboard (and also when clicking buttons on the UI Command Panel) 
-    public enum InputMode
-    {
-        MoveButton,
-        PatrolButton,
-        AttackButton,
-        None
-    }
-    public InputMode inputMode { get; private set; }
+    
 
     // Mouse left-right click-release position in World Space
     // ※ NOTE: the game is set on xz plane, thus y-axis would indicate height.
@@ -50,7 +45,8 @@ public class SelectManager : MonoBehaviour
 
     [SerializeField]
     private EventManager eventManager;
-
+    [SerializeField]
+    private CommandManager commandManager;
     [SerializeField]
     private bool displayGizmos; // For debugging purpose
 
@@ -59,19 +55,15 @@ public class SelectManager : MonoBehaviour
     private void Awake()
     {
         // Initialization
-        unitList = new List<IUnit>();
-        structureList = new List<IStructure>();
+        unitList = new List<IEntity>();
+        structureList = new List<IEntity>();
         selectableList = new List<IEntity>();
 
         selectGroupList = new List<SelectGroup>();
         selectGroupList.Capacity = 10;
-        curSelectGroup = transform.Find("Temp SelectGroup").GetComponent<SelectGroup>();
-
-        eventManager = FindObjectOfType<EventManager>();
+        curSelectGroup = null;
 
         ResetClickReleasePosition();
-        inputMode = InputMode.None;
-
     }
 
     private void Start()
@@ -84,21 +76,7 @@ public class SelectManager : MonoBehaviour
         // Move an image in replacement of the default cursor on the screen
         UpdateCursorTransform();
 
-        // ******* INPUT MODE *******
-        {
-            if (Input.GetKeyDown(KeyCode.A))
-            {
-                inputMode = InputMode.AttackButton;
-            }
-            else if (Input.GetKeyDown(KeyCode.M))
-            {
-                inputMode = InputMode.MoveButton;
-            }
-            else if (Input.GetKeyDown(KeyCode.P))
-            {
-                inputMode = InputMode.PatrolButton;
-            }
-        }
+        
         
 
         // ******* SELECT GROUP INDEXING・SAVING ******
@@ -176,30 +154,37 @@ public class SelectManager : MonoBehaviour
                 leftClickMouseWorldPosition_Release = leftClickMouseWorldPosition_Click;
                 //Debug.Log("Left Clicked at " + leftClickMousePosition_Click);
 
+                if(curSelectGroup == null) { return; }
                 RaycastHit hit;
                 Physics.Raycast(leftClickMouseWorldPosition_Click, Camera.main.transform.forward, out hit, 1000, LayerMask.GetMask(Tags.Ground));
 
                 if (curSelectGroup.entityList.Count > 0)
                 {
-                    if (inputMode == InputMode.AttackButton)
+                    if (commandManager.commandMode == CommandManager.CommandInt.Attack)
                     {
                         curSelectGroup.ResetSelectGroup();
                         bool isQueued = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-                        Command.AttackCommand(hit.point, curSelectGroup, !isQueued);
+                        CommandManager.GiveAttackCommand(hit.point, curSelectGroup, isQueued);
+                        cursorPosition.GetComponent<CursorController>().SetCursorTrigger("attackClick");
+
                     }
-                    else if (inputMode == InputMode.MoveButton)
+                    else if (commandManager.commandMode == CommandManager.CommandInt.Move)
                     {
                         curSelectGroup.ResetSelectGroup();
                         bool isQueued = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-                        Command.MoveCommand(hit.point, curSelectGroup, !isQueued);
+                        CommandManager.GiveMoveCommand(hit.point, curSelectGroup, isQueued);
+                        cursorPosition.GetComponent<CursorController>().SetCursorTrigger("moveClick");
+
                     }
-                    else if (inputMode == InputMode.PatrolButton)
+                    else if (commandManager.commandMode == CommandManager.CommandInt.Patrol)
                     {
                         curSelectGroup.ResetSelectGroup();
                         bool isQueued = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-                        Command.PatrolCommand(hit.point, curSelectGroup, !isQueued);
+                        CommandManager.GivePatrolCommand(hit.point, curSelectGroup, isQueued);
+                        cursorPosition.GetComponent<CursorController>().SetCursorTrigger("moveClick");
+
                     }
-                    else if (inputMode == InputMode.None)
+                    else if (commandManager.commandMode == CommandManager.CommandInt.None)
                     {
 
                     }
@@ -227,7 +212,7 @@ public class SelectManager : MonoBehaviour
                 // Calculate left click release position
                 leftClickMouseWorldPosition_Release = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
-                if (inputMode == InputMode.None)
+                if (commandManager.commandMode == CommandManager.CommandInt.None)
                 {
                     // Turn selected circle of past units off
                     RenderSelectedCircles(false);
@@ -242,7 +227,7 @@ public class SelectManager : MonoBehaviour
                     RenderSelectedCircles(true);
                 }
 
-                SetInputMode(InputMode.None);
+                commandManager.SetCommandMode(CommandManager.CommandInt.None);
 
                 //Debug.Log("Left Released at " + leftClickMousePosition_Release);
             }
@@ -261,20 +246,34 @@ public class SelectManager : MonoBehaviour
                 RaycastHit hit;
                 Physics.Raycast(rightClickMouseWorldPosition_Click, Camera.main.transform.forward, out hit, 1000, LayerMask.GetMask(Tags.Ground));
 
+                if (curSelectGroup == null) { return; }
+
                 if (curSelectGroup.entityList.Count > 0)
                 {
                     curSelectGroup.ResetSelectGroup();
-                    IEntity enemyAtMouse = Utilities.ReturnEntityAtWorldPosition(IEntity.RelationshipType.Enemy, hit.point);
-                    if (enemyAtMouse == null)
+                    IEntity target = Utilities.ReturnSelectableEntityAtWorldPosition(hit.point);
+                    if (target == null)
                     {
                         bool isQueued = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-                        Command.MoveCommand(hit.point, curSelectGroup, !isQueued);
+                        CommandManager.GiveMoveCommand(hit.point, curSelectGroup, isQueued);
+                        cursorPosition.GetComponent<CursorController>().SetCursorTrigger("moveClick");
                     }
                     else
                     {
                         bool isQueued = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-                        Command.AttackTargetCommand(enemyAtMouse, curSelectGroup, !isQueued);
+                        if(target.GetPlayerIndex() != playerIndex)
+                        {
+                            CommandManager.GiveAttackTargetCommand(target, curSelectGroup, isQueued);
+                            cursorPosition.GetComponent<CursorController>().SetCursorTrigger("attackClick");
+                        }
+                        else
+                        {
+                            CommandManager.GiveMoveCommand(target.GetWorldPosition(), curSelectGroup, isQueued);
+                            cursorPosition.GetComponent<CursorController>().SetCursorTrigger("moveClick");
+                        }
                     }
+
+
                 }
 
             }
@@ -297,7 +296,7 @@ public class SelectManager : MonoBehaviour
                 // Calculate right click release position
                 rightClickMouseWorldPosition_Release = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
-                SetInputMode(InputMode.None);
+                commandManager.SetCommandMode(CommandManager.CommandInt.None);
 
                 //Debug.Log("Right Released at " + rightClickMousePosition_Release);
             }
@@ -305,12 +304,7 @@ public class SelectManager : MonoBehaviour
         
     }
 
-    /// <summary>
-    /// English: Set input mode (with different input mode, left clicking will behave differently)
-    /// 日本語：インプットのモードを設定する（モードによって、左クリックの機能は異なる）
-    /// </summary>
-    /// <param name="mode"></param>
-    public void SetInputMode(InputMode _mode) { inputMode = _mode; }
+    
 
     /// <summary>
     /// English: Populate selectables, unit, structure lists with IEntity (IUnit or IStructure) resulting from Physics.OverlapBox() from the camera.
@@ -332,60 +326,52 @@ public class SelectManager : MonoBehaviour
         Collider[] colliders = Physics.OverlapBox(checkPosition, checkBoxSize / 2, Camera.main.transform.rotation, LayerMask.GetMask(Tags.Selectable));
         if (colliders.Length == 1)
         {
-            if (colliders[0].gameObject.GetComponent<IEntity>().GetSelectionType() == IEntity.SelectionType.Selectable)
+            selectableList.Add(colliders[0].gameObject.GetComponent<IEntity>());
+            if (colliders[0].gameObject.GetComponent<IEntity>().GetEntityType() == IEntity.Type.Unit)
             {
-                selectableList.Add(colliders[0].gameObject.GetComponent<IEntity>());
-                if (colliders[0].gameObject.GetComponent<IEntity>() is IUnit unit)
-                {
-                    unitList.Add(unit);
-                    Debug.Log($"Added {colliders[0].gameObject.name}");
-                }
-                else if (colliders[0].gameObject.GetComponent<IEntity>() is IStructure structure)
-                {
-                    structureList.Add(structure);
-                    Debug.Log($"Added {colliders[0].gameObject.name}");
-                }
+                unitList.Add(colliders[0].gameObject.GetComponent<IEntity>());
+                Debug.Log($"Added {colliders[0].gameObject.name}");
+            }
+            else if (colliders[0].gameObject.GetComponent<IEntity>().GetEntityType() == IEntity.Type.Structure)
+            {
+                structureList.Add(colliders[0].gameObject.GetComponent<IEntity>());
+                Debug.Log($"Added {colliders[0].gameObject.name}");
             }
         }
         else
         {
             foreach (Collider collider in colliders)
             {
-                if (collider.gameObject.GetComponent<IEntity>().GetRelationshipType() == IEntity.RelationshipType.Enemy) { continue; }
+                if (collider.gameObject.GetComponent<IEntity>().GetPlayerIndex() != playerIndex) { continue; }
 
-                if (collider.gameObject.GetComponent<IEntity>().GetSelectionType() == IEntity.SelectionType.Selectable)
+                selectableList.Add(collider.gameObject.GetComponent<IEntity>());
+                if (collider.gameObject.GetComponent<IEntity>().GetEntityType() == IEntity.Type.Unit)
                 {
-                    selectableList.Add(collider.gameObject.GetComponent<IEntity>());
-                    if (collider.gameObject.GetComponent<IEntity>() is IUnit unit)
-                    {
-                        unitList.Add(unit);
-                        Debug.Log($"Added {collider.gameObject.name}");
-                    }
-                    else if (collider.gameObject.GetComponent<IEntity>() is IStructure structure)
-                    {
-                        structureList.Add(structure);
-                        Debug.Log($"Added {collider.gameObject.name}");
-                    }
+                    unitList.Add(collider.gameObject.GetComponent<IEntity>());
+                    Debug.Log($"Added {collider.gameObject.name}");
+                }
+                else if (collider.gameObject.GetComponent<IEntity>().GetEntityType() == IEntity.Type.Structure)
+                {
+                    structureList.Add(collider.gameObject.GetComponent<IEntity>());
+                    Debug.Log($"Added {collider.gameObject.name}");
                 }
             }
         }
 
         if (selectableList.Count <= 0) { return; }
-
-        GameObject selectGroup = new GameObject("Temp SelectGroup");
-        selectGroup.transform.SetParent(transform);
-        selectGroup.AddComponent<SelectGroup>();
+        GameObject selectGroupObject = new GameObject("Temp SelectGroup");
+        selectGroupObject.transform.SetParent(transform);
+        selectGroupObject.AddComponent<SelectGroup>();
 
         for (int index = 0; index < structureList.Count; index++)
         {
-            selectGroup.GetComponent<SelectGroup>().entityList.Add(structureList[index]);
+            selectGroupObject.GetComponent<SelectGroup>().entityList.Add(structureList[index]);
         }
         for (int index = 0; index < unitList.Count; index++)
         {
-            selectGroup.GetComponent<SelectGroup>().entityList.Add(unitList[index]);
+            selectGroupObject.GetComponent<SelectGroup>().entityList.Add(unitList[index]);
         }
-
-        curSelectGroup = selectGroup.GetComponent<SelectGroup>();
+        curSelectGroup = selectGroupObject.GetComponent<SelectGroup>();
 
         eventManager.CallCurrentGroupSelected(curSelectGroup.entityList);
 
@@ -450,13 +436,13 @@ public class SelectManager : MonoBehaviour
         foreach (IEntity curEntity in curSelectGroup.entityList)
         {
             selectableList.Add(curEntity);
-            if(curEntity is IUnit unit)
+            if(curEntity.GetEntityType() == IEntity.Type.Unit)
             {
-                unitList.Add(unit);
+                unitList.Add(curEntity);
             }
-            else if(curEntity is IStructure structure)
+            else if(curEntity.GetEntityType() == IEntity.Type.Structure)
             {
-                structureList.Add(structure);
+                structureList.Add(curEntity);
             }
         }
 
@@ -471,23 +457,12 @@ public class SelectManager : MonoBehaviour
     /// English: Set the selected circles of currently selected entities.
     /// 日本語：現在の使用しているEntityの選ばれた円の状態を設定する。
     /// </summary>
-    /// <param name="isOn"></param>
-    public void RenderSelectedCircles(bool isOn)
+    /// <param name="_isOn"></param>
+    public void RenderSelectedCircles(bool _isOn)
     {
-        if (unitList.Count > 0)
+        foreach(IEntity entity in selectableList)
         {
-            foreach (IUnit curUnit in unitList)
-            {
-                curUnit.RenderSelectedCircle(isOn);
-            }
-        }
-
-        if (structureList.Count > 0)
-        {
-            foreach (IStructure curStructure in structureList)
-            {
-                curStructure.RenderSelectedCircle(isOn);
-            }
+            entity.RenderSelectedCircle(_isOn);
         }
     }
 
@@ -503,7 +478,7 @@ public class SelectManager : MonoBehaviour
         structureList.TrimExcess();
         selectableList.Clear();
         selectableList.TrimExcess();
-
+        curSelectGroup = null;
         eventManager.CallCurrentGroupCleared();
 
         Debug.Log("Clear All List");
